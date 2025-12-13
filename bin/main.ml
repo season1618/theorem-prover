@@ -5,7 +5,7 @@ open Theorem_prover.Parser
 open Printf
 
 let main () =
-  let token_list = tokenize "%($x:(a).(abc[(a),(b)]))($y:(b).(y))" in
+  let token_list = tokenize "%($x:(a).(abc[(a),(*),(@)]))(?y:(b).(def[]))" in
   let (term, _) = parse_term token_list in
   printf "%a\n" pp_term term
 

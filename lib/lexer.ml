@@ -3,7 +3,7 @@ open List
 
 open Type
 
-let symbols = ['('; ')'; '['; ']'; ','; '.'; ':'; '@'; '%'; '*'; '$'; '%']
+let symbols = ['('; ')'; '['; ']'; ','; '.'; ':'; '*'; '@'; '%'; '$'; '?']
 
 let is_alphabetic c =
   'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z'
