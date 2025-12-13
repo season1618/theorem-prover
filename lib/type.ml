@@ -7,6 +7,10 @@ type token_error
 
 exception TokenError of token_error
 
+let pp_token ppf = function
+  | Delim c -> Printf.fprintf ppf "%c" c
+  | Ident s -> Printf.fprintf ppf "%s" s
+
 let print_token token =
   match token with
     Delim c -> print_char c
@@ -16,8 +20,7 @@ let rec print_token_list token_list =
   match token_list with
     [] -> ()
   | tok :: toks ->
-      print_token tok;
-      print_string " ";
+      Printf.printf "%a " pp_token tok;
       print_token_list toks
 
 let println_token_list token_list =
