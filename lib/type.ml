@@ -1,15 +1,35 @@
+open Printf
+
 type token
   = Delim of char
   | Ident of string
 
+type term
+  = Const of string * term list
+  | Var of char
+  | Star
+  | Sort
+  | App of term * term
+  | Lam of char * term * term
+  | Type of char * term * term
+
 type token_error
   = InvalidToken of string
 
+type syntax_error
+  = Empty
+  | UnexpectedToken of token * token
+  | NoToken of token
+  | InvalidVariable of string
+  | NoVariable
+
 exception TokenError of token_error
 
+exception SyntaxError of syntax_error
+
 let pp_token ppf = function
-  | Delim c -> Printf.fprintf ppf "%c" c
-  | Ident s -> Printf.fprintf ppf "%s" s
+  | Delim c -> fprintf ppf "%c" c
+  | Ident s -> fprintf ppf "%s" s
 
 let print_token token =
   match token with
@@ -26,3 +46,18 @@ let rec print_token_list token_list =
 let println_token_list token_list =
   print_token_list token_list;
   print_string "\n"
+
+let rec pp_term ppf = function
+  | Const (name, args) -> fprintf ppf "%s[%a]" name pp_term_list args
+  | Var x -> fprintf ppf "%c" x
+  | Star -> fprintf ppf "*"
+  | Sort -> fprintf ppf "□"
+  | App (t1, t2) -> fprintf ppf "(%a %a)" pp_term t1 pp_term t2
+  | Lam (x, t, b) -> fprintf ppf "(λ %c : %a . %a)" x pp_term t pp_term b
+  | Type (x, t, b) -> fprintf ppf "(Π %c : %a . %a)" x pp_term t pp_term b
+
+and pp_term_list ppf = function
+  | [] -> ()
+  | term :: term_list ->
+      fprintf ppf "%a" pp_term term;
+      List.iter (fun term -> fprintf ppf ", %a" pp_term term) term_list
