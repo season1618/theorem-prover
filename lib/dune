@@ -1,0 +1,2 @@
+(library
+ (name theorem_prover))
