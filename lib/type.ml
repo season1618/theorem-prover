@@ -2,6 +2,11 @@ type token
   = Delim of char
   | Ident of string
 
+type token_error
+  = InvalidToken of string
+
+exception TokenError of token_error
+
 let print_token token =
   match token with
     Delim c -> print_char c

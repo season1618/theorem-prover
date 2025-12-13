@@ -18,6 +18,7 @@ let rec tokenize' (s: string) i =
         while !j < String.length s && is_alphabetic s.[!j] do
           j := !j + 1
         done;
-        Ident (sub s i (!j - i)) :: tokenize' s !j
+        if i == !j then raise (TokenError (InvalidToken (sub s i 1)))
+        else Ident (sub s i (!j - i)) :: tokenize' s !j
 
 let tokenize s = tokenize' s 0
