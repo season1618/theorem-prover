@@ -31,3 +31,58 @@ let rec alpha_equiv t1 t2 =
   | (Lam (x1, a1, t1), Lam (x2, a2, t2)) | (Pi (x1, a1, t1), Pi (x2, a2, t2)) ->
     alpha_equiv a1 a2 && let y = fresh_var () in alpha_equiv (assign t1 x1 y) (assign t2 x2 y)
   | (_, _) -> false
+
+let rec read_derivs () =
+  let str = read_line () in
+  let line, list = match String.split_on_char ' ' str with
+    | line :: list -> (line, list)
+    | [] -> raise @@ Failure "empty" in
+  let line = int_of_string line in
+  if line = -1 then
+    []
+  else
+    let (rule, args) = match list with
+      | rule :: args -> (rule, args)
+      | [] -> raise @@ Failure str in
+    (match (rule, args) with
+    | ("sort", []) -> Sort
+    | ("var", [i; x]) -> Var (int_of_string i, x)
+    | ("weak", [i; j; x]) -> Weak (int_of_string i, int_of_string j, x)
+    | ("form", [i; j]) -> Form (int_of_string i, int_of_string j)
+    | _ -> raise @@ Failure ("rule : " ^ rule))
+    :: read_derivs ()
+
+let is_sort t =
+  match t with
+  | Type | Kind -> true
+  | _ -> false
+
+let verify () =
+  let derivs = read_derivs () in
+
+  let judges = Vector.create ~dummy:([], [], Type, Kind) in
+  List.iter (fun deriv ->
+    match deriv with
+    | Sort -> Vector.push judges ([], [], Type, Kind)
+    | Var (i, x) ->
+        let (defs, ctx, a, _) = Vector.get judges i in
+        Vector.push judges (defs, (x, a) :: ctx, Var x, a)
+    | Weak (i, j, x) ->
+        let (defs, ctx, a, b) = Vector.get judges i in
+        let (_, _, c, s) = Vector.get judges j in
+        if is_sort s then
+          Vector.push judges (defs, (x, c) :: ctx, a, b)
+        else
+          raise (Failure "failure")
+    | Form (i, j) ->
+        let (defs, ctx1, a, s1) = Vector.get judges i in
+        let (_, ctx2, b, s2) = Vector.get judges j in
+        let (x, a') = match ctx2 with
+          | (x, a') :: _ -> (x, a')
+          | [] -> raise (Failure "failure") in
+        if a = a' && is_sort s1 && is_sort s2 then
+          Vector.push judges (defs, ctx1, Pi (x, a, b), s2)
+        else
+          raise (Failure "failure")
+  ) derivs;
+  judges

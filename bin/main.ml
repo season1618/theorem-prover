@@ -15,7 +15,10 @@ let main () =
   let (term2, _) = parse "%($y:(x).(y))(?z:(x).(z))" in
   printf "%a [x = y] = %a\n" pp_term term1 pp_term (assign term1 "x" "y");
   printf "%a [x = y] = %a\n" pp_term term2 pp_term (assign term2 "x" "y");
-  printf "%b\n" (alpha_equiv term1 term2)
+  printf "%b\n" (alpha_equiv term1 term2);
+
+  let book = verify () in
+  print_book book
 
 let () =
   try main () with

@@ -1,2 +1,3 @@
 (library
- (name theorem_prover))
+ (name theorem_prover)
+ (libraries vector))

@@ -13,6 +13,16 @@ type term
   | Lam of string * term * term
   | Pi  of string * term * term
 
+type context = (string * term) list
+type defn = context * string * term * term
+type defns = defn list
+type judge = defns * context * term * term
+type deriv
+  = Sort
+  | Var of int * string
+  | Weak of int * int * string
+  | Form of int * int
+
 type token_error
   = InvalidToken of string
 
@@ -61,3 +71,13 @@ and pp_term_list ppf = function
   | term :: term_list ->
       fprintf ppf "%a" pp_term term;
       List.iter (fun term -> fprintf ppf ", %a" pp_term term) term_list
+
+let pp_ctx ppf = function
+  | [] -> ()
+  | (x, a) :: ctx ->
+      List.iter (fun (x, a) -> fprintf ppf "%s:%a, " x pp_term a) (List.rev ctx);
+      fprintf ppf "%s:%a" x pp_term a
+
+let pp_judge ppf (_, ctx, t1, t2) = fprintf ppf " ; %a |- %a : %a" pp_ctx ctx pp_term t1 pp_term t2
+
+let print_book book = Vector.iteri (fun line judge -> printf "%d : %a\n" line pp_judge judge) book
