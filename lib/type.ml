@@ -5,13 +5,13 @@ type token
   | Ident of string
 
 type term
-  = Const of string * term list
+  = Type
+  | Kind
+  | Const of string * term list
   | Var of char
-  | Star
-  | Sort
   | App of term * term
   | Lam of char * term * term
-  | Type of char * term * term
+  | Pi  of char * term * term
 
 type token_error
   = InvalidToken of string
@@ -48,13 +48,13 @@ let println_token_list token_list =
   print_string "\n"
 
 let rec pp_term ppf = function
+  | Type -> fprintf ppf "*"
+  | Kind -> fprintf ppf "□"
   | Const (name, args) -> fprintf ppf "%s[%a]" name pp_term_list args
   | Var x -> fprintf ppf "%c" x
-  | Star -> fprintf ppf "*"
-  | Sort -> fprintf ppf "□"
   | App (t1, t2) -> fprintf ppf "(%a %a)" pp_term t1 pp_term t2
   | Lam (x, t, b) -> fprintf ppf "(λ %c : %a . %a)" x pp_term t pp_term b
-  | Type (x, t, b) -> fprintf ppf "(Π %c : %a . %a)" x pp_term t pp_term b
+  | Pi  (x, t, b) -> fprintf ppf "(Π %c : %a . %a)" x pp_term t pp_term b
 
 and pp_term_list ppf = function
   | [] -> ()

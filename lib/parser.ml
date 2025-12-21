@@ -25,8 +25,8 @@ let rec parse_term token_list =
   | [] -> raise (SyntaxError Empty)
   | head :: tail ->
       (match head with
-      | Delim '*' -> (Star, tail)
-      | Delim '@' -> (Sort, tail)
+      | Delim '*' -> (Type, tail)
+      | Delim '@' -> (Kind, tail)
       | Delim '%' ->
           let (term1, tail) = parse_paren_term tail in
           let (term2, tail) = parse_paren_term tail in
@@ -44,7 +44,7 @@ let rec parse_term token_list =
           let (typ, tail) = parse_paren_term tail in
           let (_, tail) = parse_token (Delim '.') tail in
           let (body, tail) = parse_paren_term tail in
-          (Type (name, typ, body), tail)
+          (Pi  (name, typ, body), tail)
       | Delim _ -> raise (SyntaxError Empty)
       | Ident name when length name = 1 -> (Var name.[0], tail)
       | Ident name ->
