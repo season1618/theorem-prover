@@ -8,10 +8,10 @@ type term
   = Type
   | Kind
   | Const of string * term list
-  | Var of char
+  | Var of string
   | App of term * term
-  | Lam of char * term * term
-  | Pi  of char * term * term
+  | Lam of string * term * term
+  | Pi  of string * term * term
 
 type token_error
   = InvalidToken of string
@@ -51,10 +51,10 @@ let rec pp_term ppf = function
   | Type -> fprintf ppf "*"
   | Kind -> fprintf ppf "□"
   | Const (name, args) -> fprintf ppf "%s[%a]" name pp_term_list args
-  | Var x -> fprintf ppf "%c" x
+  | Var x -> fprintf ppf "%s" x
   | App (t1, t2) -> fprintf ppf "(%a %a)" pp_term t1 pp_term t2
-  | Lam (x, t, b) -> fprintf ppf "(λ %c : %a . %a)" x pp_term t pp_term b
-  | Pi  (x, t, b) -> fprintf ppf "(Π %c : %a . %a)" x pp_term t pp_term b
+  | Lam (x, t, b) -> fprintf ppf "(λ %s : %a . %a)" x pp_term t pp_term b
+  | Pi  (x, t, b) -> fprintf ppf "(Π %s : %a . %a)" x pp_term t pp_term b
 
 and pp_term_list ppf = function
   | [] -> ()

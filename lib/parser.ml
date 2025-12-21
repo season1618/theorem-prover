@@ -4,7 +4,7 @@ open String
 
 let parse_var token_list =
   match token_list with
-  | Ident name :: rest when length name = 1 -> (name.[0], rest)
+  | Ident name :: rest when length name = 1 -> (name, rest)
   | Ident name :: _ -> raise (SyntaxError (InvalidVariable name))
   | Delim _ :: _ | [] -> raise (SyntaxError NoVariable)
 
@@ -46,7 +46,7 @@ let rec parse_term token_list =
           let (body, tail) = parse_paren_term tail in
           (Pi  (name, typ, body), tail)
       | Delim _ -> raise (SyntaxError Empty)
-      | Ident name when length name = 1 -> (Var name.[0], tail)
+      | Ident name when length name = 1 -> (Var name, tail)
       | Ident name ->
           let (_, tail) = parse_token (Delim '[') tail in
           let (term_list, tail) =

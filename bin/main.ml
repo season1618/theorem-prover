@@ -1,13 +1,21 @@
 open Theorem_prover.Type
 open Theorem_prover.Lexer
 open Theorem_prover.Parser
+open Theorem_prover.Verify
 
 open Printf
 
+let parse str = parse_term (tokenize str)
+
 let main () =
-  let token_list = tokenize "%($x:(a).(abc[(a),(*),(@)]))(?y:(b).(def[]))" in
-  let (term, _) = parse_term token_list in
-  printf "%a\n" pp_term term
+  let (term, _) = parse "%($x:(a).(abc[(a),(*),(@)]))(?y:(b).(def[]))" in
+  printf "%a\n" pp_term term;
+
+  let (term1, _) = parse "%($x:(x).(x))(?x:(x).(x))" in
+  let (term2, _) = parse "%($y:(x).(y))(?z:(x).(z))" in
+  printf "%a [x = y] = %a\n" pp_term term1 pp_term (assign term1 "x" "y");
+  printf "%a [x = y] = %a\n" pp_term term2 pp_term (assign term2 "x" "y");
+  printf "%b\n" (alpha_equiv term1 term2)
 
 let () =
   try main () with
