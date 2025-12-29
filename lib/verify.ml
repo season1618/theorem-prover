@@ -8,6 +8,7 @@ let fresh_var () =
   var_count := !var_count + 1;
   "_" ^ string_of_int !var_count
 
+(* y may be either a free variable or a binding variable in t *)
 let rec rename t x y =
   match t with
   | Type -> Type
@@ -24,6 +25,21 @@ let rec rename t x y =
       else if x' = y then let x'' = fresh_var () in rename (Pi (x'', a, rename t x' x'')) x y
       else Pi (x', rename a x y, rename t x y)
 
+(* y must be neither a free variable nor a binding variable in t *)
+let rec rename_fresh t x y =
+  match t with
+  | Type -> Type
+  | Kind -> Kind
+  | Const (name, args) -> Const (name, (map (fun t -> rename_fresh t x y) args))
+  | Var x' -> if x' = x then Var y else Var x'
+  | App (t1, t2) -> App (rename_fresh t1 x y, rename_fresh t2 x y)
+  | Lam (x', a, t) ->
+      if x' = x then Lam (x', rename_fresh a x y, t)
+      else Lam (x', rename_fresh a x y, rename_fresh t x y)
+  | Pi  (x', a, t) ->
+      if x' = x then Pi (x', rename_fresh a x y, t)
+      else Pi (x', rename_fresh a x y, rename_fresh t x y)
+
 let rec alpha_equiv t1 t2 =
   match (t1, t2) with
   | (Type, Type) | (Kind, Kind) -> true
@@ -32,7 +48,7 @@ let rec alpha_equiv t1 t2 =
   | (Var x1, Var x2) -> x1 = x2
   | (App (u1, v1), App (u2, v2)) -> alpha_equiv u1 u2 && alpha_equiv v1 v2
   | (Lam (x1, a1, t1), Lam (x2, a2, t2)) | (Pi (x1, a1, t1), Pi (x2, a2, t2)) ->
-    alpha_equiv a1 a2 && let y = fresh_var () in alpha_equiv (rename t1 x1 y) (rename t2 x2 y)
+    alpha_equiv a1 a2 && let y = fresh_var () in alpha_equiv (rename_fresh t1 x1 y) (rename_fresh t2 x2 y)
   | (_, _) -> false
 
 let assert_sort t =

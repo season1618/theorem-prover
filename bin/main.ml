@@ -13,8 +13,10 @@ let main () =
 
   let (term1, _) = parse "%($x:(x).(x))(?x:(x).(x))" in
   let (term2, _) = parse "%($y:(x).(y))(?z:(x).(z))" in
-  printf "%a [x = y] = %a\n" pp_term term1 pp_term (rename term1 "x" "y");
-  printf "%a [x = y] = %a\n" pp_term term2 pp_term (rename term2 "x" "y");
+  printf "%a [x := y] = %a\n" pp_term term1 pp_term (rename term1 "x" "y");
+  printf "%a [x := y] = %a\n" pp_term term2 pp_term (rename term2 "x" "y");
+  printf "%a [x := a] = %a\n" pp_term term1 pp_term (rename_fresh term1 "x" "a");
+  printf "%a [x := a] = %a\n" pp_term term2 pp_term (rename_fresh term2 "x" "a");
   printf "%b\n" (alpha_equiv term1 term2);
 
   let book = verify () in
