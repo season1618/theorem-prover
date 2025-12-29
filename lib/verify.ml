@@ -32,6 +32,17 @@ let rec alpha_equiv t1 t2 =
     alpha_equiv a1 a2 && let y = fresh_var () in alpha_equiv (assign t1 x1 y) (assign t2 x2 y)
   | (_, _) -> false
 
+let alpha_equiv_context ctx1 ctx2 =
+  List.for_all2 (fun (x1, t1) -> fun (x2, t2) -> String.equal x1 x2 && alpha_equiv t1 t2) ctx1 ctx2
+
+let alpha_equiv_definition def1 def2 =
+  let (ctx1, a1, u1, v1) = def1 in
+  let (ctx2, a2, u2, v2) = def2 in
+  alpha_equiv_context ctx1 ctx2 && String.equal a1 a2 && alpha_equiv u1 u2 && alpha_equiv v1 v2
+
+let alpha_equiv_definitions defs1 defs2 =
+  List.for_all2 alpha_equiv_definition defs1 defs2
+
 let rec read_derivs () =
   let str = read_line () in
   let line, list = match String.split_on_char ' ' str with
@@ -57,32 +68,36 @@ let is_sort t =
   | Type | Kind -> true
   | _ -> false
 
+let derive book deriv =
+  match deriv with
+  | Sort -> ([], [], Type, Kind)
+  | Var (i, x) ->
+      let (defs, ctx, a, s) = Vector.get book i in
+      if is_sort s then
+        (defs, (x, a) :: ctx, Var x, a)
+      else
+        raise (Failure "failure")
+  | Weak (i, j, x) ->
+      let (defs1, ctx1, a, b) = Vector.get book i in
+      let (defs2, ctx2, c, s) = Vector.get book j in
+      if alpha_equiv_definitions defs1 defs2 && alpha_equiv_context ctx1 ctx2 && is_sort s then
+        (defs1, (x, c) :: ctx1, a, b)
+      else
+        raise (Failure "failure")
+  | Form (i, j) ->
+      let (defs1, ctx1, a1, s1) = Vector.get book i in
+      let (defs2, ctx2', b, s2) = Vector.get book j in
+      let (ctx2, (x, a2)) = match ctx2' with
+        | (x, a2) :: ctx2 -> (ctx2, (x, a2))
+        | [] -> raise (Failure "failure") in
+      if alpha_equiv_definitions defs1 defs2 && alpha_equiv_context ctx1 ctx2 && alpha_equiv a1 a2 && is_sort s1 && is_sort s2 then
+        (defs1, ctx1, Pi (x, a1, b), s2)
+      else
+        raise (Failure "failure")
+
 let verify () =
   let derivs = read_derivs () in
 
-  let judges = Vector.create ~dummy:([], [], Type, Kind) in
-  List.iter (fun deriv ->
-    match deriv with
-    | Sort -> Vector.push judges ([], [], Type, Kind)
-    | Var (i, x) ->
-        let (defs, ctx, a, _) = Vector.get judges i in
-        Vector.push judges (defs, (x, a) :: ctx, Var x, a)
-    | Weak (i, j, x) ->
-        let (defs, ctx, a, b) = Vector.get judges i in
-        let (_, _, c, s) = Vector.get judges j in
-        if is_sort s then
-          Vector.push judges (defs, (x, c) :: ctx, a, b)
-        else
-          raise (Failure "failure")
-    | Form (i, j) ->
-        let (defs, ctx1, a, s1) = Vector.get judges i in
-        let (_, ctx2, b, s2) = Vector.get judges j in
-        let (x, a') = match ctx2 with
-          | (x, a') :: _ -> (x, a')
-          | [] -> raise (Failure "failure") in
-        if a = a' && is_sort s1 && is_sort s2 then
-          Vector.push judges (defs, ctx1, Pi (x, a, b), s2)
-        else
-          raise (Failure "failure")
-  ) derivs;
-  judges
+  let book = Vector.create ~dummy:([], [], Type, Kind) in
+  List.iter (fun deriv -> Vector.push book (derive book deriv)) derivs;
+  book
