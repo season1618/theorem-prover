@@ -37,6 +37,7 @@ type deriv_error
   = NotSort of term
   | NotSameName of string * string
   | NotAlphaEquivalence of term * term
+  | EmptyContext
 
 exception TokenError of token_error
 

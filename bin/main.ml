@@ -45,4 +45,7 @@ let () =
       | NotSameName (x1, x2) ->
           printf "two variables '%s' and '%s' must be same\n" x1 x2
       | NotAlphaEquivalence (t1, t2) ->
-          printf "twi terms '%a' and '%a' must be alpha equivalent\n" pp_term t1 pp_term t2)
+          printf "two terms '%a' and '%a' must be alpha equivalent\n" pp_term t1 pp_term t2
+      | EmptyContext ->
+          printf "the context must be non-empty\n"
+      )

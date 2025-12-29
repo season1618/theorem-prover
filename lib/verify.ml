@@ -95,17 +95,15 @@ let derive book deriv =
       assert_sort s;
       (defs1, (x, c) :: ctx1, a, b)
   | Form (i, j) ->
-      let (defs1, ctx1, a1, s1) = Vector.get book i in
-      let (defs2, ctx2', b, s2) = Vector.get book j in
-      let (ctx2, (x, a2)) = match ctx2' with
-        | (x, a2) :: ctx2 -> (ctx2, (x, a2))
-        | [] -> raise (Failure "failure") in
-      assert_alpha_equiv_definitions defs1 defs2;
-      assert_alpha_equiv_context ctx1 ctx2;
-      assert_alpha_equiv a1 a2;
-      assert_sort s1;
-      assert_sort s2;
-      (defs1, ctx1, Pi (x, a1, b), s2)
+      (match (Vector.get book i, Vector.get book j) with
+      | (defs1, ctx1, a1, s1), (defs2, (x, a2) :: ctx2, b, s2) ->
+          assert_alpha_equiv_definitions defs1 defs2;
+          assert_alpha_equiv_context ctx1 ctx2;
+          assert_alpha_equiv a1 a2;
+          assert_sort s1;
+          assert_sort s2;
+          (defs1, ctx1, Pi (x, a1, b), s2)
+      | _, _ -> raise @@ DerivError EmptyContext)
 
 let verify () =
   let derivs = read_derivs () in
