@@ -38,6 +38,8 @@ type deriv_error
   | NotSameName of string * string
   | NotAlphaEquivalence of term * term
   | EmptyContext
+  | NotSameLengthContext of context * context
+  | NotSameLengthDefinitions of defns * defns
 
 exception TokenError of token_error
 
@@ -86,6 +88,16 @@ let pp_ctx ppf = function
       List.iter (fun (x, a) -> fprintf ppf "%s:%a, " x pp_term a) (List.rev ctx);
       fprintf ppf "%s:%a" x pp_term a
 
-let pp_judge ppf (_, ctx, t1, t2) = fprintf ppf " ; %a |- %a : %a" pp_ctx ctx pp_term t1 pp_term t2
+let pp_def ppf (ctx, name, term, typ) =
+  fprintf ppf "%a ; %s := %a : %a" pp_ctx ctx name pp_term term pp_term typ
+
+let pp_defs ppf = function
+  | [] -> ()
+  | def :: defs ->
+      List.iter (fprintf ppf "%a, " pp_def) (List.rev defs);
+      fprintf ppf "%a" pp_def def
+
+let pp_judge ppf (defs, ctx, term, typ) =
+  fprintf ppf "%a ; %a |- %a : %a" pp_defs defs pp_ctx ctx pp_term term pp_term typ
 
 let print_book book = Vector.iteri (fun line judge -> printf "%d : %a\n" line pp_judge judge) book

@@ -48,4 +48,12 @@ let () =
           printf "two terms '%a' and '%a' must be alpha equivalent\n" pp_term t1 pp_term t2
       | EmptyContext ->
           printf "the context must be non-empty\n"
+      | NotSameLengthContext (ctx1, ctx2) ->
+          printf "the context length do not match\n";
+          printf "'%a'\n" pp_ctx ctx1;
+          printf "'%a'\n" pp_ctx ctx2
+      | NotSameLengthDefinitions (defs1, defs2) ->
+          printf "the definitions length do not match\n";
+          printf "'%a'\n" pp_defs defs1;
+          printf "'%a'\n" pp_defs defs2
       )

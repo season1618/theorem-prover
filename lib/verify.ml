@@ -1,5 +1,7 @@
 open Type
 
+open List
+
 let var_count = ref(0)
 
 let fresh_var () =
@@ -25,7 +27,8 @@ let rec assign t y z =
 let rec alpha_equiv t1 t2 =
   match (t1, t2) with
   | (Type, Type) | (Kind, Kind) -> true
-  | (Const (name1, args1), Const (name2, args2)) -> name1 = name2 && List.for_all2 alpha_equiv args1 args2
+  | (Const (name1, args1), Const (name2, args2)) ->
+      name1 = name2 && length args1 = length args2 && for_all2 alpha_equiv args1 args2
   | (Var x1, Var x2) -> x1 = x2
   | (App (u1, v1), App (u2, v2)) -> alpha_equiv u1 u2 && alpha_equiv v1 v2
   | (Lam (x1, a1, t1), Lam (x2, a2, t2)) | (Pi (x1, a1, t1), Pi (x2, a2, t2)) ->
@@ -44,10 +47,13 @@ let assert_alpha_equiv t1 t2 =
   if alpha_equiv t1 t2 then () else raise @@ DerivError (NotAlphaEquivalence (t1, t2))
 
 let assert_alpha_equiv_context ctx1 ctx2 =
-  List.iter2 (fun (x1, t1) -> fun (x2, t2) ->
-    if x1 = x2 then assert_alpha_equiv t1 t2
-    else assert_same_name x1 x2
-  ) ctx1 ctx2
+  if length ctx1 = length ctx2 then
+    iter2 (fun (x1, t1) -> fun (x2, t2) ->
+      if x1 = x2 then assert_alpha_equiv t1 t2
+      else assert_same_name x1 x2
+    ) ctx1 ctx2
+  else
+    raise @@ DerivError (NotSameLengthContext (ctx1, ctx2))
 
 let assert_alpha_equiv_definition def1 def2 =
   let (ctx1, a1, u1, v1) = def1 in
@@ -58,7 +64,10 @@ let assert_alpha_equiv_definition def1 def2 =
   assert_alpha_equiv v1 v2
 
 let assert_alpha_equiv_definitions defs1 defs2 =
-  List.iter2 assert_alpha_equiv_definition defs1 defs2
+  if length defs1 = length defs2 then
+    iter2 assert_alpha_equiv_definition defs1 defs2
+  else
+    raise @@ DerivError (NotSameLengthDefinitions (defs1, defs2))
 
 let rec read_derivs () =
   let str = read_line () in
