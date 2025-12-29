@@ -14,9 +14,9 @@ type term
   | Pi  of string * term * term
 
 type context = (string * term) list
-type defn = context * string * term * term
-type defns = defn list
-type judge = defns * context * term * term
+type definition = context * string * term * term
+type definitions = definition list
+type judgement = definitions * context * term * term
 type deriv
   = Sort
   | Var of int * string
@@ -39,7 +39,7 @@ type deriv_error
   | NotAlphaEquivalence of term * term
   | EmptyContext
   | NotSameLengthContext of context * context
-  | NotSameLengthDefinitions of defns * defns
+  | NotSameLengthDefinitions of definitions * definitions
 
 exception TokenError of token_error
 
