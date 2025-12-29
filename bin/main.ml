@@ -13,11 +13,17 @@ let main () =
 
   let (term1, _) = parse "%($x:(x).(x))(?x:(x).(x))" in
   let (term2, _) = parse "%($y:(x).(y))(?z:(x).(z))" in
+  let (term3, _) = parse "%($x:(x).(x))($y:(y).(x))" in
+  let (term4, _) = parse "$x:(*).(x)" in
   printf "%a [x := y] = %a\n" pp_term term1 pp_term (rename term1 "x" "y");
   printf "%a [x := y] = %a\n" pp_term term2 pp_term (rename term2 "x" "y");
   printf "%a [x := a] = %a\n" pp_term term1 pp_term (rename_fresh term1 "x" "a");
   printf "%a [x := a] = %a\n" pp_term term2 pp_term (rename_fresh term2 "x" "a");
+  printf "%a [x := %a] = %a\n" pp_term term3 pp_term term4 pp_term (subst term3 "x" term4);
   printf "%b\n" (alpha_equiv term1 term2);
+
+  let (term, _) = parse "%(%($x:(*).(%(x)(x)))($y:(*).(y)))($z:(*).(z))" in
+  printf "%a -> %a\n" pp_term term pp_term (beta_reduction term);
 
   let book = verify () in
   print_book book

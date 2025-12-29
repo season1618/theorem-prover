@@ -40,6 +40,20 @@ let rec rename_fresh t x y =
       if x' = x then Pi (x', rename_fresh a x y, t)
       else Pi (x', rename_fresh a x y, rename_fresh t x y)
 
+let rec subst t x u =
+  match t with
+  | Type -> Type
+  | Kind -> Kind
+  | Const (name, args) -> Const (name, map (fun t -> subst t x u) args)
+  | Var x' -> if x' = x then u else Var x'
+  | App (t1, t2) -> App (subst t1 x u, subst t2 x u)
+  | Lam (x', a, t) ->
+      let x'' = fresh_var () in
+      Lam (x'', subst a x u, subst (rename_fresh t x' x'') x u)
+  | Pi  (x', a, t) ->
+      let x'' = fresh_var () in
+      Pi (x'', subst a x u, subst (rename_fresh t x' x'') x u)
+
 let rec alpha_equiv t1 t2 =
   match (t1, t2) with
   | (Type, Type) | (Kind, Kind) -> true
@@ -50,6 +64,16 @@ let rec alpha_equiv t1 t2 =
   | (Lam (x1, a1, t1), Lam (x2, a2, t2)) | (Pi (x1, a1, t1), Pi (x2, a2, t2)) ->
     alpha_equiv a1 a2 && let y = fresh_var () in alpha_equiv (rename_fresh t1 x1 y) (rename_fresh t2 x2 y)
   | (_, _) -> false
+
+let rec beta_reduction term =
+  match term with
+  | App (t1, t2) ->
+      let t1 = beta_reduction t1 in
+      let t2 = beta_reduction t2 in
+      (match t1 with
+      | Lam (x, _, b) -> beta_reduction @@ subst b x t2
+      | _ -> App (t1, t2))
+  | _ -> term
 
 let assert_sort t =
   match t with
