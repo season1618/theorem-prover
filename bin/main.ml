@@ -37,3 +37,12 @@ let () =
       | InvalidVariable name ->
           printf "'%s' is invalid as a variable name\n" name
       | NoVariable -> printf "a variable is expected, but not found\n")
+  | DerivError err ->
+      printf "Derivation Error: ";
+      (match err with
+      | NotSort term ->
+          printf "'%a' must be sort ('*' or '□')\n" pp_term term
+      | NotSameName (x1, x2) ->
+          printf "two variables '%s' and '%s' must be same\n" x1 x2
+      | NotAlphaEquivalence (t1, t2) ->
+          printf "twi terms '%a' and '%a' must be alpha equivalent\n" pp_term t1 pp_term t2)

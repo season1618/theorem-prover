@@ -33,9 +33,16 @@ type syntax_error
   | InvalidVariable of string
   | NoVariable
 
+type deriv_error
+  = NotSort of term
+  | NotSameName of string * string
+  | NotAlphaEquivalence of term * term
+
 exception TokenError of token_error
 
 exception SyntaxError of syntax_error
+
+exception DerivError of deriv_error
 
 let pp_token ppf = function
   | Delim c -> fprintf ppf "%c" c

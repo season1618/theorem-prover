@@ -32,16 +32,33 @@ let rec alpha_equiv t1 t2 =
     alpha_equiv a1 a2 && let y = fresh_var () in alpha_equiv (assign t1 x1 y) (assign t2 x2 y)
   | (_, _) -> false
 
-let alpha_equiv_context ctx1 ctx2 =
-  List.for_all2 (fun (x1, t1) -> fun (x2, t2) -> String.equal x1 x2 && alpha_equiv t1 t2) ctx1 ctx2
+let assert_sort t =
+  match t with
+  | Type | Kind -> ()
+  | _ -> raise @@ DerivError (NotSort t)
 
-let alpha_equiv_definition def1 def2 =
+let assert_same_name x1 x2 =
+  if x1 = x2 then () else raise @@ DerivError (NotSameName (x1, x2))
+
+let assert_alpha_equiv t1 t2 =
+  if alpha_equiv t1 t2 then () else raise @@ DerivError (NotAlphaEquivalence (t1, t2))
+
+let assert_alpha_equiv_context ctx1 ctx2 =
+  List.iter2 (fun (x1, t1) -> fun (x2, t2) ->
+    if x1 = x2 then assert_alpha_equiv t1 t2
+    else assert_same_name x1 x2
+  ) ctx1 ctx2
+
+let assert_alpha_equiv_definition def1 def2 =
   let (ctx1, a1, u1, v1) = def1 in
   let (ctx2, a2, u2, v2) = def2 in
-  alpha_equiv_context ctx1 ctx2 && String.equal a1 a2 && alpha_equiv u1 u2 && alpha_equiv v1 v2
+  assert_alpha_equiv_context ctx1 ctx2;
+  assert_same_name a1 a2;
+  assert_alpha_equiv u1 u2;
+  assert_alpha_equiv v1 v2
 
-let alpha_equiv_definitions defs1 defs2 =
-  List.for_all2 alpha_equiv_definition defs1 defs2
+let assert_alpha_equiv_definitions defs1 defs2 =
+  List.iter2 assert_alpha_equiv_definition defs1 defs2
 
 let rec read_derivs () =
   let str = read_line () in
@@ -63,37 +80,32 @@ let rec read_derivs () =
     | _ -> raise @@ Failure ("rule : " ^ rule))
     :: read_derivs ()
 
-let is_sort t =
-  match t with
-  | Type | Kind -> true
-  | _ -> false
-
 let derive book deriv =
   match deriv with
   | Sort -> ([], [], Type, Kind)
   | Var (i, x) ->
       let (defs, ctx, a, s) = Vector.get book i in
-      if is_sort s then
-        (defs, (x, a) :: ctx, Var x, a)
-      else
-        raise (Failure "failure")
+      assert_sort s;
+      (defs, (x, a) :: ctx, Var x, a)
   | Weak (i, j, x) ->
       let (defs1, ctx1, a, b) = Vector.get book i in
       let (defs2, ctx2, c, s) = Vector.get book j in
-      if alpha_equiv_definitions defs1 defs2 && alpha_equiv_context ctx1 ctx2 && is_sort s then
-        (defs1, (x, c) :: ctx1, a, b)
-      else
-        raise (Failure "failure")
+      assert_alpha_equiv_definitions defs1 defs2;
+      assert_alpha_equiv_context ctx1 ctx2;
+      assert_sort s;
+      (defs1, (x, c) :: ctx1, a, b)
   | Form (i, j) ->
       let (defs1, ctx1, a1, s1) = Vector.get book i in
       let (defs2, ctx2', b, s2) = Vector.get book j in
       let (ctx2, (x, a2)) = match ctx2' with
         | (x, a2) :: ctx2 -> (ctx2, (x, a2))
         | [] -> raise (Failure "failure") in
-      if alpha_equiv_definitions defs1 defs2 && alpha_equiv_context ctx1 ctx2 && alpha_equiv a1 a2 && is_sort s1 && is_sort s2 then
-        (defs1, ctx1, Pi (x, a1, b), s2)
-      else
-        raise (Failure "failure")
+      assert_alpha_equiv_definitions defs1 defs2;
+      assert_alpha_equiv_context ctx1 ctx2;
+      assert_alpha_equiv a1 a2;
+      assert_sort s1;
+      assert_sort s2;
+      (defs1, ctx1, Pi (x, a1, b), s2)
 
 let verify () =
   let derivs = read_derivs () in
