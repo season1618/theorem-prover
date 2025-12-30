@@ -40,6 +40,8 @@ type deriv_error
   | EmptyContext
   | NotSameLengthContext of context * context
   | NotSameLengthDefinitions of definitions * definitions
+  | NotSameLengthParamArg of string * context * term list
+  | UndefinedConst of string
 
 exception TokenError of token_error
 

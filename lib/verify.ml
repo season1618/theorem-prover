@@ -65,17 +65,30 @@ let rec alpha_equiv t1 t2 =
     alpha_equiv a1 a2 && let y = fresh_var () in alpha_equiv (rename_fresh t1 x1 y) (rename_fresh t2 x2 y)
   | (_, _) -> false
 
-let rec beta_reduction term =
+let rec find_def defs name =
+  match defs with
+  | [] -> raise @@ DerivError (UndefinedConst name)
+  | (ctx, name', term, typ) :: _ when name' = name -> (ctx, term, typ)
+  | _ :: defs -> find_def defs name
+
+let rec beta_delta_reduction defs term =
   match term with
-  | Const (name, args) -> Const (name, map beta_reduction args)
+  | Const (name, args) ->
+      let (ctx, body, _) = find_def defs name in
+      let params = rev ctx in
+      let args = map (beta_delta_reduction defs) args in
+      if length params = length args then
+        beta_delta_reduction defs @@ fold_left2 (fun b -> fun (x, _) -> fun arg -> subst b x arg) body params args
+      else
+        raise @@ DerivError (NotSameLengthParamArg (name, ctx, args))
   | App (t1, t2) ->
-      let t1 = beta_reduction t1 in
-      let t2 = beta_reduction t2 in
+      let t1 = beta_delta_reduction defs t1 in
+      let t2 = beta_delta_reduction defs t2 in
       (match t1 with
-      | Lam (x, _, b) -> beta_reduction @@ subst b x t2
+      | Lam (x, _, b) -> beta_delta_reduction defs (subst b x t2)
       | _ -> App (t1, t2))
-  | Lam (x, a, b) -> Lam (x, beta_reduction a, beta_reduction b)
-  | Pi  (x, a, b) -> Pi  (x, beta_reduction a, beta_reduction b)
+  | Lam (x, a, b) -> Lam (x, beta_delta_reduction defs a, beta_delta_reduction defs b)
+  | Pi  (x, a, b) -> Pi  (x, beta_delta_reduction defs a, beta_delta_reduction defs b)
   | _ -> term
 
 let assert_sort t =

@@ -22,8 +22,11 @@ let main () =
   printf "%a [x := %a] = %a\n" pp_term term3 pp_term term4 pp_term (subst term3 "x" term4);
   printf "%b\n" (alpha_equiv term1 term2);
 
-  let (term, _) = parse "%($x:(*).($y:(%($z:(*).(z))(x)).(%(x)(not[(x)]))))($w:(*).(w))" in
-  printf "%a -> %a\n" pp_term term pp_term (beta_reduction term);
+  let defs = [([("B", Type); ("A", Type)], "imply", Pi ("x", Var "A", Var "B"), Type)] in
+  let (term1, _) = parse "%($x:(*).($y:(%($z:(*).(z))(x)).(%(x)(x))))($w:(*).(w))" in
+  let (term2, _) = parse "%($x:(*).(imply[(%($y:(*).(x))(y)),(x)]))($w:(*).(w))" in
+  printf "%a -> %a\n" pp_term term1 pp_term (beta_delta_reduction [] term1);
+  printf "%a -> %a\n" pp_term term2 pp_term (beta_delta_reduction defs term2);
 
   let book = verify () in
   print_book book
@@ -64,4 +67,8 @@ let () =
           printf "the definitions length do not match\n";
           printf "'%a'\n" pp_defs defs1;
           printf "'%a'\n" pp_defs defs2
+      | NotSameLengthParamArg (name, ctx, args) ->
+          printf "the cotnext of constant '%s' is '%a', but given argument list is '%a'" name pp_ctx ctx pp_term_list args
+      | UndefinedConst name ->
+          printf "constant '%s' is undefined\n" name
       )
