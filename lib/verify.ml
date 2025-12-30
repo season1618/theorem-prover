@@ -54,6 +54,9 @@ let rec subst t x u =
       let x'' = fresh_var () in
       Pi (x'', subst a x u, subst (rename_fresh t x' x'') x u)
 
+let subst_list t xs us =
+  fold_left2 subst t xs us
+
 let rec alpha_equiv t1 t2 =
   match (t1, t2) with
   | (Type, Type) | (Kind, Kind) -> true
@@ -139,10 +142,20 @@ let rec read_derivs () =
       | [] -> raise @@ Failure str in
     (match (rule, args) with
     | ("sort", []) -> Sort
-    | ("var", [i; x]) -> Var (int_of_string i, x)
+    | ("var" , [i; x]) -> Var (int_of_string i, x)
     | ("weak", [i; j; x]) -> Weak (int_of_string i, int_of_string j, x)
     | ("form", [i; j]) -> Form (int_of_string i, int_of_string j)
-    | _ -> raise @@ Failure ("rule : " ^ rule))
+    | ("appl", [i; j]) -> App (int_of_string i, int_of_string j)
+    | ("abst", [i; j]) -> Abs (int_of_string i, int_of_string j)
+    | ("conv", [i; j]) -> Conv (int_of_string i, int_of_string j)
+    | ("def" , [i; j; a]) -> Def (int_of_string i, int_of_string j, a)
+    | ("inst", i :: n :: ks) ->
+        let i = int_of_string i in
+        let n = int_of_string n in
+        let k = int_of_string @@ nth ks n in
+        let js = init n (fun i -> int_of_string (nth ks i)) in
+        Inst (i, js, k)
+    | _ -> raise @@ Failure ("invalid rule : " ^ rule))
     :: read_derivs ()
 
 let derive book deriv =
@@ -169,6 +182,61 @@ let derive book deriv =
           assert_sort s2;
           (defs1, ctx1, Pi (x, a1, b), s2)
       | _, _ -> raise @@ DerivError EmptyContext)
+  | App (i, j) ->
+      (match (Vector.get book i, Vector.get book j) with
+      | (defs, ctx, t1, Pi (x, a, b)), (defs', ctx', t2, a') ->
+          assert_alpha_equiv_definitions defs defs';
+          assert_alpha_equiv_context ctx ctx';
+          assert_alpha_equiv a a';
+          (defs, ctx, App (t1, t2), subst b x t2)
+      | (_, _, _, typ), _ -> raise @@ DerivError (NotPi typ))
+  | Abs (i, j) ->
+      (match (Vector.get book i, Vector.get book j) with
+      | (defs, (x, a) :: ctx, t, b), (defs', ctx', Pi (x', a', b'), s) ->
+          assert_alpha_equiv_definitions defs defs';
+          assert_alpha_equiv_context ctx ctx';
+          assert_same_name x x';
+          assert_alpha_equiv a a';
+          assert_alpha_equiv b b';
+          assert_sort s;
+          (defs, ctx, Lam (x, a, t), Pi (x, a, b))
+      | (_, _ :: _, _, _), (_, _, term, _) -> raise @@ DerivError (NotPi term)
+      | (_, [], _, _), _ -> raise @@ DerivError (EmptyContext)
+      )
+  | Conv (i, j) ->
+      (match (Vector.get book i, Vector.get book j) with
+      | (defs, ctx, a, b1), (defs', ctx', b2, s) ->
+          assert_alpha_equiv_definitions defs defs';
+          assert_alpha_equiv_context ctx ctx';
+          assert_sort s;
+          assert_alpha_equiv (beta_delta_reduction defs b1) (beta_delta_reduction defs b2);
+          (defs, ctx, a, b2)
+      )
+  | Def (i, j, name) ->
+      (match (Vector.get book i, Vector.get book j) with
+      | (defs, ctx1, term1, type1), (defs', ctx2, term2, type2) ->
+          assert_alpha_equiv_definitions defs defs';
+          let def = (ctx2, name, term2, type2) in
+          (def :: defs, ctx1, term1, type1)
+      )
+  | Inst (i, js, k) ->
+      let (defs, ctx, typ, kind) = Vector.get book i in
+      if typ = Type && kind = Kind then
+        let (ctx2, name, _, typ) = nth (rev defs) k in
+        let args = map (fun j ->
+          let (defs', ctx', u, v) = Vector.get book j in
+          assert_alpha_equiv_definitions defs defs';
+          assert_alpha_equiv_context ctx ctx';
+          (u, v)
+        ) js in
+        let (arg_terms, arg_types) = split args in
+        let (param_vars, param_types) = split (rev ctx2) in
+        iter2 (fun param_type -> fun arg_type ->
+          assert_alpha_equiv (subst_list param_type param_vars arg_terms) arg_type
+        ) param_types arg_types;
+        (defs, ctx, Const (name, arg_terms), subst_list typ param_vars arg_terms)
+      else
+        raise @@ DerivError (NotTypeKind (typ, kind))
 
 let verify () =
   let derivs = read_derivs () in

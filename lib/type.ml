@@ -22,6 +22,11 @@ type deriv
   | Var of int * string
   | Weak of int * int * string
   | Form of int * int
+  | App of int * int
+  | Abs of int * int
+  | Conv of int * int
+  | Def of int * int * string
+  | Inst of int * int list * int
 
 type token_error
   = InvalidToken of string
@@ -42,6 +47,8 @@ type deriv_error
   | NotSameLengthDefinitions of definitions * definitions
   | NotSameLengthParamArg of string * context * term list
   | UndefinedConst of string
+  | NotTypeKind of term * term
+  | NotPi of term
 
 exception TokenError of token_error
 

@@ -71,4 +71,8 @@ let () =
           printf "the cotnext of constant '%s' is '%a', but given argument list is '%a'" name pp_ctx ctx pp_term_list args
       | UndefinedConst name ->
           printf "constant '%s' is undefined\n" name
+      | NotTypeKind (typ, kind) ->
+          printf "(%a, %a) must be (*, □)\n" pp_term typ pp_term kind
+      | NotPi term ->
+          printf "'%a' must be Π-term\n" pp_term term
       )
