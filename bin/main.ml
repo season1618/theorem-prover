@@ -22,7 +22,7 @@ let main () =
   printf "%a [x := %a] = %a\n" pp_term term3 pp_term term4 pp_term (subst term3 "x" term4);
   printf "%b\n" (alpha_equiv term1 term2);
 
-  let (term, _) = parse "%(%($x:(*).(%(x)(x)))($y:(*).(y)))($z:(*).(z))" in
+  let (term, _) = parse "%($x:(*).($y:(%($z:(*).(z))(x)).(%(x)(not[(x)]))))($w:(*).(w))" in
   printf "%a -> %a\n" pp_term term pp_term (beta_reduction term);
 
   let book = verify () in

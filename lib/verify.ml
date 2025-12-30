@@ -67,12 +67,15 @@ let rec alpha_equiv t1 t2 =
 
 let rec beta_reduction term =
   match term with
+  | Const (name, args) -> Const (name, map beta_reduction args)
   | App (t1, t2) ->
       let t1 = beta_reduction t1 in
       let t2 = beta_reduction t2 in
       (match t1 with
       | Lam (x, _, b) -> beta_reduction @@ subst b x t2
       | _ -> App (t1, t2))
+  | Lam (x, a, b) -> Lam (x, beta_reduction a, beta_reduction b)
+  | Pi  (x, a, b) -> Pi  (x, beta_reduction a, beta_reduction b)
   | _ -> term
 
 let assert_sort t =
