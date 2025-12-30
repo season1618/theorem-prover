@@ -22,7 +22,7 @@ let main () =
   printf "%a [x := %a] = %a\n" pp_term term3 pp_term term4 pp_term (subst term3 "x" term4);
   printf "%b\n" (alpha_equiv term1 term2);
 
-  let defs = [([("B", Type); ("A", Type)], "imply", Pi ("x", Var "A", Var "B"), Type)] in
+  let defs = [([("B", Type); ("A", Type)], "imply", Some (Pi ("x", Var "A", Var "B")), Type)] in
   let (term1, _) = parse "%($x:(*).($y:(%($z:(*).(z))(x)).(%(x)(x))))($w:(*).(w))" in
   let (term2, _) = parse "%($x:(*).(imply[(%($y:(*).(x))(y)),(x)]))($w:(*).(w))" in
   printf "%a -> %a\n" pp_term term1 pp_term (beta_delta_reduction [] term1);
@@ -69,6 +69,8 @@ let () =
           printf "'%a'\n" pp_defs defs2
       | NotSameLengthParamArg (name, ctx, args) ->
           printf "the cotnext of constant '%s' is '%a', but given argument list is '%a'" name pp_ctx ctx pp_term_list args
+      | DoNotMatchDefinition (def1, def2) ->
+          printf "'%a' and '%a' must match\n" pp_def def1 pp_def def2
       | UndefinedConst name ->
           printf "constant '%s' is undefined\n" name
       | NotTypeKind (typ, kind) ->

@@ -14,7 +14,7 @@ type term
   | Pi  of string * term * term
 
 type context = (string * term) list
-type definition = context * string * term * term
+type definition = context * string * term option * term
 type definitions = definition list
 type judgement = definitions * context * term * term
 type deriv
@@ -26,6 +26,7 @@ type deriv
   | Abs of int * int
   | Conv of int * int
   | Def of int * int * string
+  | DefPrim of int * int * string
   | Inst of int * int list * int
 
 type token_error
@@ -46,6 +47,7 @@ type deriv_error
   | NotSameLengthContext of context * context
   | NotSameLengthDefinitions of definitions * definitions
   | NotSameLengthParamArg of string * context * term list
+  | DoNotMatchDefinition of definition * definition
   | UndefinedConst of string
   | NotTypeKind of term * term
   | NotPi of term
@@ -98,7 +100,9 @@ let pp_ctx ppf = function
       fprintf ppf "%s:%a" x pp_term a
 
 let pp_def ppf (ctx, name, term, typ) =
-  fprintf ppf "%a ; %s := %a : %a" pp_ctx ctx name pp_term term pp_term typ
+  match term with
+  | Some term -> fprintf ppf "%a |> %s := %a : %a" pp_ctx ctx name pp_term term pp_term typ
+  | None -> fprintf ppf "%a |> %s : %a" pp_ctx ctx name pp_term typ
 
 let pp_defs ppf = function
   | [] -> ()

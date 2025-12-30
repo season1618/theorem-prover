@@ -81,7 +81,9 @@ let rec beta_delta_reduction defs term =
       let params = rev ctx in
       let args = map (beta_delta_reduction defs) args in
       if length params = length args then
-        beta_delta_reduction defs @@ fold_left2 (fun b -> fun (x, _) -> fun arg -> subst b x arg) body params args
+        match body with
+        | Some body -> beta_delta_reduction defs @@ fold_left2 (fun b -> fun (x, _) -> fun arg -> subst b x arg) body params args
+        | None -> Const (name, args)
       else
         raise @@ DerivError (NotSameLengthParamArg (name, ctx, args))
   | App (t1, t2) ->
@@ -119,7 +121,10 @@ let assert_alpha_equiv_definition def1 def2 =
   let (ctx2, a2, u2, v2) = def2 in
   assert_alpha_equiv_context ctx1 ctx2;
   assert_same_name a1 a2;
-  assert_alpha_equiv u1 u2;
+  (match (u1, u2) with
+  | Some u1, Some u2 -> assert_alpha_equiv u1 u2
+  | None, None -> ()
+  | _ -> raise @@ DerivError (DoNotMatchDefinition (def1, def2)));
   assert_alpha_equiv v1 v2
 
 let assert_alpha_equiv_definitions defs1 defs2 =
@@ -149,6 +154,7 @@ let rec read_derivs () =
     | ("abst", [i; j]) -> Abs (int_of_string i, int_of_string j)
     | ("conv", [i; j]) -> Conv (int_of_string i, int_of_string j)
     | ("def" , [i; j; a]) -> Def (int_of_string i, int_of_string j, a)
+    | ("defpr" , [i; j; a]) -> Def (int_of_string i, int_of_string j, a)
     | ("inst", i :: n :: ks) ->
         let i = int_of_string i in
         let n = int_of_string n in
@@ -216,7 +222,15 @@ let derive book deriv =
       (match (Vector.get book i, Vector.get book j) with
       | (defs, ctx1, term1, type1), (defs', ctx2, term2, type2) ->
           assert_alpha_equiv_definitions defs defs';
-          let def = (ctx2, name, term2, type2) in
+          let def = (ctx2, name, Some term2, type2) in
+          (def :: defs, ctx1, term1, type1)
+      )
+  | DefPrim (i, j, name) ->
+      (match (Vector.get book i, Vector.get book j) with
+      | (defs, ctx1, term1, type1), (defs', ctx2, type2, s) ->
+          assert_alpha_equiv_definitions defs defs';
+          assert_sort s;
+          let def = (ctx2, name, None, type2) in
           (def :: defs, ctx1, term1, type1)
       )
   | Inst (i, js, k) ->
