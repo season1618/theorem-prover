@@ -54,6 +54,26 @@ let rec subst t x u =
       let x'' = fresh_var () in
       Pi (x'', subst a x u, subst (rename_fresh t x' x'') x u)
 
+let rec subst_simul t substs =
+  match t with
+  | Type -> Type
+  | Kind -> Kind
+  | Const (name, args) -> Const (name, map (fun t -> subst_simul t substs) args)
+  | Var x' ->
+      let rec subst_simul_var substs =
+        match substs with
+        | [] -> t
+        | (x, u) :: _ when x' = x -> u
+        | _ :: substs -> subst_simul_var substs
+      in subst_simul_var substs
+  | App (t1, t2) -> App (subst_simul t1 substs, subst_simul t2 substs)
+  | Lam (x', a, t) ->
+      let x'' = fresh_var () in
+      Lam (x'', subst_simul a substs, subst_simul (rename_fresh t x' x'') substs)
+  | Pi  (x', a, t) ->
+      let x'' = fresh_var () in
+      Pi (x'', subst_simul a substs, subst_simul (rename_fresh t x' x'') substs)
+
 let subst_list t xs us =
   fold_left2 subst t xs us
 
@@ -82,7 +102,9 @@ let rec beta_delta_reduction defs term =
       let args = map (beta_delta_reduction defs) args in
       if length params = length args then
         match body with
-        | Some body -> beta_delta_reduction defs @@ fold_left2 (fun b -> fun (x, _) -> fun arg -> subst b x arg) body params args
+        | Some body ->
+            let substs = map2 (fun (x, _) u -> (x, u)) params args in
+            beta_delta_reduction defs (subst_simul body substs)
         | None -> Const (name, args)
       else
         raise @@ DerivError (NotSameLengthParamArg (name, ctx, args))
@@ -223,6 +245,7 @@ let derive book deriv =
       | (defs, ctx1, term1, type1), (defs', ctx2, term2, type2) ->
           assert_alpha_equiv_definitions defs defs';
           let def = (ctx2, name, Some term2, type2) in
+          if name = "implies" then Printf.printf "%a\n" pp_def def;
           (def :: defs, ctx1, term1, type1)
       )
   | DefPrim (i, j, name) ->
@@ -256,5 +279,5 @@ let verify () =
   let derivs = read_derivs () in
 
   let book = Vector.create ~dummy:([], [], Type, Kind) in
-  List.iter (fun deriv -> Vector.push book (derive book deriv)) derivs;
+  List.iteri (fun i deriv -> Printf.printf "%d\n" i; Vector.push book (derive book deriv)) derivs;
   book
