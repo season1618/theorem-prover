@@ -1,4 +1,5 @@
 open Format
+open List
 
 type token
   = Delim of char
@@ -93,6 +94,12 @@ and pp_term_list ff = function
       fprintf ff "%a" pp_term term;
       List.iter (fun term -> fprintf ff ", %a" pp_term term) term_list
 
+let pp_subst ff (x, term) =
+  fprintf ff "%s := %a" x pp_term term
+
+let pp_state ff (term, typ) =
+  fprintf ff "%a : %a" pp_term term pp_term typ
+
 let pp_ctx ff = function
   | [] -> ()
   | (x, a) :: ctx ->
@@ -110,7 +117,52 @@ let pp_defs ff = function
       List.iter (fprintf ff "%a, " pp_def) (List.rev defs);
       fprintf ff "%a" pp_def def
 
+let pp_consts ff = function
+  | [] -> ()
+  | (_, name, _, _) :: defs ->
+      List.iter (fun (_, name, _, _) -> fprintf ff "%s, " name) (List.rev defs);
+      fprintf ff "%s" name
+
 let pp_judge ff (defs, ctx, term, typ) =
-  fprintf ff "%a ; %a |- %a : %a" pp_defs defs pp_ctx ctx pp_term term pp_term typ
+  fprintf ff "%a ; %a |- %a : %a" pp_consts defs pp_ctx ctx pp_term term pp_term typ
+
+let pp_judge_simp ff (_, _, term, typ) =
+  fprintf ff ".. |- %a : %a" pp_term term pp_term typ
 
 let print_book book = Vector.iteri (fun line judge -> printf "%d : %a\n" line pp_judge judge) book
+
+let pp_sep ff () = fprintf ff ", "
+let pp_list pp_elem = pp_print_list ~pp_sep:pp_sep pp_elem
+
+let print_deriv book deriv =
+  match deriv with
+  | Sort -> ()
+  | Var (i, _) ->
+      printf "%a\n" pp_judge (Vector.get book i)
+  | Weak (i, j, _) | Form (i, j) | App (i, j) | Abs (i, j) | Conv (i, j) | Def (i, j, _) | DefPrim (i, j, _) ->
+      printf "%a %a\n" pp_judge (Vector.get book i) pp_judge (Vector.get book j)
+  | Inst (i, js, k) ->
+      let judge0 = Vector.get book i in
+      let (defs, _, _, _) = judge0 in
+      let (params, name, _, typ) as def = nth (rev defs) k in
+      let args_judge = map (Vector.get book) js in
+      let args_state = map (fun (_, _, term, typ) -> (term, typ)) args_judge in
+      let args = map (fun (_, _, term, _) -> term) args_judge in
+
+      let def_str = asprintf "%a" pp_def def in
+      let premiss_str = asprintf "%a    .. |- %a"
+        pp_judge_simp judge0
+        (pp_list pp_state) args_state
+      in
+      let concl_str = asprintf ".. |- %a : %a[%a]"
+        pp_term (Const (name, args))
+        pp_term typ
+        (pp_list pp_subst) (map2 (fun (x, _) u -> (x, u)) (rev params) args)
+      in
+      print_endline def_str;
+      print_endline premiss_str;
+      for _ = 0 to max (String.length premiss_str) (String.length concl_str) do
+        printf "-"
+      done;
+      print_endline "";
+      print_endline concl_str

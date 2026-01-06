@@ -1,6 +1,8 @@
 open Type
+open Error
 
 open List
+open Printf
 
 let var_count = ref(0)
 
@@ -279,5 +281,11 @@ let verify () =
   let derivs = read_derivs () in
 
   let book = Vector.create ~dummy:([], [], Type, Kind) in
-  List.iteri (fun i deriv -> Printf.printf "%d\n" i; Vector.push book (derive book deriv)) derivs;
+  iteri (fun i deriv ->
+    try Vector.push book (derive book deriv) with
+    | DerivError err ->
+        printf "line %d\n" i;
+        print_deriv_error book deriv err;
+        exit 0
+  ) derivs;
   book
