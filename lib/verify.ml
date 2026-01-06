@@ -178,7 +178,7 @@ let rec read_derivs () =
     | ("abst", [i; j]) -> Abs (int_of_string i, int_of_string j)
     | ("conv", [i; j]) -> Conv (int_of_string i, int_of_string j)
     | ("def" , [i; j; a]) -> Def (int_of_string i, int_of_string j, a)
-    | ("defpr" , [i; j; a]) -> Def (int_of_string i, int_of_string j, a)
+    | ("defpr" , [i; j; a]) -> DefPrim (int_of_string i, int_of_string j, a)
     | ("inst", i :: n :: ks) ->
         let i = int_of_string i in
         let n = int_of_string n in
@@ -247,7 +247,6 @@ let derive book deriv =
       | (defs, ctx1, term1, type1), (defs', ctx2, term2, type2) ->
           assert_alpha_equiv_definitions defs defs';
           let def = (ctx2, name, Some term2, type2) in
-          Format.printf "%a\n" pp_def def;
           (def :: defs, ctx1, term1, type1)
       )
   | DefPrim (i, j, name) ->
@@ -282,6 +281,7 @@ let verify () =
 
   let book = Vector.create ~dummy:([], [], Type, Kind) in
   iteri (fun i deriv ->
+    printf "%d\n" i;
     try Vector.push book (derive book deriv) with
     | DerivError err ->
         printf "line %d\n" i;
