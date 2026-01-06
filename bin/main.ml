@@ -3,7 +3,7 @@ open Theorem_prover.Lexer
 open Theorem_prover.Parser
 open Theorem_prover.Verify
 
-open Printf
+open Format
 
 let parse str = parse_term (tokenize str)
 

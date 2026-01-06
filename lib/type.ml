@@ -1,4 +1,4 @@
-open Printf
+open Format
 
 type token
   = Delim of char
@@ -58,9 +58,9 @@ exception SyntaxError of syntax_error
 
 exception DerivError of deriv_error
 
-let pp_token ppf = function
-  | Delim c -> fprintf ppf "%c" c
-  | Ident s -> fprintf ppf "%s" s
+let pp_token ff = function
+  | Delim c -> fprintf ff "%c" c
+  | Ident s -> fprintf ff "%s" s
 
 let print_token token =
   match token with
@@ -71,46 +71,46 @@ let rec print_token_list token_list =
   match token_list with
     [] -> ()
   | tok :: toks ->
-      Printf.printf "%a " pp_token tok;
+      printf "%a " pp_token tok;
       print_token_list toks
 
 let println_token_list token_list =
   print_token_list token_list;
   print_string "\n"
 
-let rec pp_term ppf = function
-  | Type -> fprintf ppf "*"
-  | Kind -> fprintf ppf "□"
-  | Const (name, args) -> fprintf ppf "%s[%a]" name pp_term_list args
-  | Var x -> fprintf ppf "%s" x
-  | App (t1, t2) -> fprintf ppf "(%a %a)" pp_term t1 pp_term t2
-  | Lam (x, t, b) -> fprintf ppf "(λ %s : %a . %a)" x pp_term t pp_term b
-  | Pi  (x, t, b) -> fprintf ppf "(Π %s : %a . %a)" x pp_term t pp_term b
+let rec pp_term ff = function
+  | Type -> fprintf ff "*"
+  | Kind -> fprintf ff "□"
+  | Const (name, args) -> fprintf ff "%s[%a]" name pp_term_list args
+  | Var x -> fprintf ff "%s" x
+  | App (t1, t2) -> fprintf ff "(%a %a)" pp_term t1 pp_term t2
+  | Lam (x, t, b) -> fprintf ff "(λ %s : %a . %a)" x pp_term t pp_term b
+  | Pi  (x, t, b) -> fprintf ff "(Π %s : %a . %a)" x pp_term t pp_term b
 
-and pp_term_list ppf = function
+and pp_term_list ff = function
   | [] -> ()
   | term :: term_list ->
-      fprintf ppf "%a" pp_term term;
-      List.iter (fun term -> fprintf ppf ", %a" pp_term term) term_list
+      fprintf ff "%a" pp_term term;
+      List.iter (fun term -> fprintf ff ", %a" pp_term term) term_list
 
-let pp_ctx ppf = function
+let pp_ctx ff = function
   | [] -> ()
   | (x, a) :: ctx ->
-      List.iter (fun (x, a) -> fprintf ppf "%s:%a, " x pp_term a) (List.rev ctx);
-      fprintf ppf "%s:%a" x pp_term a
+      List.iter (fun (x, a) -> fprintf ff "%s:%a, " x pp_term a) (List.rev ctx);
+      fprintf ff "%s:%a" x pp_term a
 
-let pp_def ppf (ctx, name, term, typ) =
+let pp_def ff (ctx, name, term, typ) =
   match term with
-  | Some term -> fprintf ppf "%a |> %s := %a : %a" pp_ctx ctx name pp_term term pp_term typ
-  | None -> fprintf ppf "%a |> %s : %a" pp_ctx ctx name pp_term typ
+  | Some term -> fprintf ff "%a |> %s := %a : %a" pp_ctx ctx name pp_term term pp_term typ
+  | None -> fprintf ff "%a |> %s : %a" pp_ctx ctx name pp_term typ
 
-let pp_defs ppf = function
+let pp_defs ff = function
   | [] -> ()
   | def :: defs ->
-      List.iter (fprintf ppf "%a, " pp_def) (List.rev defs);
-      fprintf ppf "%a" pp_def def
+      List.iter (fprintf ff "%a, " pp_def) (List.rev defs);
+      fprintf ff "%a" pp_def def
 
-let pp_judge ppf (defs, ctx, term, typ) =
-  fprintf ppf "%a ; %a |- %a : %a" pp_defs defs pp_ctx ctx pp_term term pp_term typ
+let pp_judge ff (defs, ctx, term, typ) =
+  fprintf ff "%a ; %a |- %a : %a" pp_defs defs pp_ctx ctx pp_term term pp_term typ
 
 let print_book book = Vector.iteri (fun line judge -> printf "%d : %a\n" line pp_judge judge) book

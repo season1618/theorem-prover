@@ -245,7 +245,7 @@ let derive book deriv =
       | (defs, ctx1, term1, type1), (defs', ctx2, term2, type2) ->
           assert_alpha_equiv_definitions defs defs';
           let def = (ctx2, name, Some term2, type2) in
-          if name = "implies" then Printf.printf "%a\n" pp_def def;
+          Format.printf "%a\n" pp_def def;
           (def :: defs, ctx1, term1, type1)
       )
   | DefPrim (i, j, name) ->
