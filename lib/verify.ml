@@ -271,9 +271,9 @@ let derive book deriv =
         let (arg_terms, arg_types) = split args in
         let (param_vars, param_types) = split (rev ctx2) in
         iter2 (fun param_type -> fun arg_type ->
-          assert_alpha_equiv (subst_list param_type param_vars arg_terms) arg_type
+          assert_alpha_equiv (subst_simul param_type (combine param_vars arg_terms)) arg_type
         ) param_types arg_types;
-        (defs, ctx, Const (name, arg_terms), subst_list typ param_vars arg_terms)
+        (defs, ctx, Const (name, arg_terms), subst_simul typ (combine param_vars arg_terms))
       else
         raise @@ DerivError (NotTypeKind (typ, kind))
 
