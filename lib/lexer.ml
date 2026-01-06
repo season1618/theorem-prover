@@ -21,4 +21,10 @@ let rec tokenize' (s: string) i =
         if i = !j then raise (TokenError (InvalidToken (sub s i 1)))
         else Ident (sub s i (!j - i)) :: tokenize' s !j
 
-let tokenize s = tokenize' s 0
+let tokenize s =
+  try tokenize' s 0 with
+  | TokenError err ->
+      Format.printf "Token Error: ";
+      (match err with
+      | InvalidToken token -> Format.printf "invalid token '%s'\n" token);
+      exit 0

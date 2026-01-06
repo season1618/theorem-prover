@@ -1,11 +1,8 @@
 open Theorem_prover.Type
-open Theorem_prover.Lexer
 open Theorem_prover.Parser
 open Theorem_prover.Verify
 
 open Format
-
-let parse str = parse_term (tokenize str)
 
 let main () =
   let (term, _) = parse "%($x:(a).(abc[(a),(*),(@)]))(?y:(b).(def[]))" in
@@ -31,20 +28,4 @@ let main () =
   let book = verify () in
   print_book book
 
-let () =
-  try main () with
-  | TokenError err ->
-      printf "Token Error: ";
-      (match err with
-      | InvalidToken token -> printf "invalid token '%s'\n" token)
-  | SyntaxError err ->
-      printf "Syntax Error: ";
-      (match err with
-      | Empty -> printf "empty expression\n"
-      | UnexpectedToken (expected, actual) ->
-          printf "'%a' is expected, but '%a' is actual\n" pp_token expected pp_token actual
-      | NoToken expected ->
-          printf "'%a' is expected, but no token\n" pp_token expected
-      | InvalidVariable name ->
-          printf "'%s' is invalid as a variable name\n" name
-      | NoVariable -> printf "a variable is expected, but not found\n")
+let () = main ()

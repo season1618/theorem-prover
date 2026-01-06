@@ -1,6 +1,8 @@
 open Type
+open Lexer
 
 open String
+open Format
 
 let parse_var token_list =
   match token_list with
@@ -74,3 +76,20 @@ and parse_paren_term rest =
   let (_, rest) = parse_token (Delim ')') rest in
   (term, rest)
 
+let parse str =
+  try parse_term (tokenize str) with
+  | SyntaxError err ->
+      printf "Syntax Error: ";
+      (match err with
+      | Empty ->
+          printf "empty expression\n"
+      | UnexpectedToken (expected, actual) ->
+          printf "'%a' is expected, but '%a' is actual\n" pp_token expected pp_token actual
+      | NoToken expected ->
+          printf "'%a' is expected, but no token\n" pp_token expected
+      | InvalidVariable name ->
+          printf "'%s' is invalid as a variable name\n" name
+      | NoVariable ->
+          printf "a variable is expected, but not found\n"
+      );
+      exit 0
