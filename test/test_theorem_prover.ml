@@ -1,6 +1,7 @@
 open Theorem_prover.Type
 open Theorem_prover.Parser
 open Theorem_prover.Verify
+open Theorem_prover.Value
 
 open Format
 
@@ -22,5 +23,10 @@ let () =
   let defs = [([("B", Type); ("A", Type)], "imply", Some (Pi ("x", Var "A", Var "B")), Type)] in
   let (term1, _) = parse "%($x:(*).($y:(%($z:(*).(z))(x)).(%(x)(x))))($w:(*).(w))" in
   let (term2, _) = parse "%($x:(*).(imply[(%($y:(*).(x))(y)),(x)]))($w:(*).(w))" in
-  printf "%a -> %a\n" pp_term term1 pp_term (beta_delta_reduction [] term1);
-  printf "%a -> %a\n" pp_term term2 pp_term (beta_delta_reduction defs term2);
+  printf "%a ->\n" pp_term term1;
+  printf "  %a\n" pp_term (beta_delta_reduction [] term1);
+  printf "  %a\n" pp_term (normalize_by_eval [] term1);
+
+  printf "%a ->\n" pp_term term2;
+  printf "  %a\n" pp_term (beta_delta_reduction defs term2);
+  printf "  %a\n" pp_term (normalize_by_eval defs term2);

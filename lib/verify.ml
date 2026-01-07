@@ -1,14 +1,10 @@
 open Type
 open Error
+open Util
+open Value
 
 open List
 open Printf
-
-let var_count = ref(0)
-
-let fresh_var () =
-  var_count := !var_count + 1;
-  "_" ^ string_of_int !var_count
 
 (* y may be either a free variable or a binding variable in t *)
 let rec rename t x y =
@@ -90,12 +86,6 @@ let rec alpha_equiv t1 t2 =
     alpha_equiv a1 a2 && let y = fresh_var () in alpha_equiv (rename_fresh t1 x1 y) (rename_fresh t2 x2 y)
   | (_, _) -> false
 
-let rec find_def defs name =
-  match defs with
-  | [] -> raise @@ DerivError (UndefinedConst name)
-  | (ctx, name', term, typ) :: _ when name' = name -> (ctx, term, typ)
-  | _ :: defs -> find_def defs name
-
 let rec beta_delta_reduction defs term =
   match term with
   | Const (name, args) ->
@@ -120,7 +110,7 @@ let rec beta_delta_reduction defs term =
   | Pi  (x, a, b) -> Pi  (x, beta_delta_reduction defs a, beta_delta_reduction defs b)
   | _ -> term
 
-let assert_sort t =
+let assert_sort (t : term) =
   match t with
   | Type | Kind -> ()
   | _ -> raise @@ DerivError (NotSort t)
@@ -188,7 +178,7 @@ let rec read_derivs () =
     | _ -> raise @@ Failure ("invalid rule : " ^ rule))
     :: read_derivs ()
 
-let derive book deriv =
+let derive (book : judgement Vector.t) deriv : judgement =
   match deriv with
   | Sort -> ([], [], Type, Kind)
   | Var (i, x) ->
@@ -239,7 +229,7 @@ let derive book deriv =
           assert_alpha_equiv_definitions defs defs';
           assert_alpha_equiv_context ctx ctx';
           assert_sort s;
-          assert_alpha_equiv (beta_delta_reduction defs b1) (beta_delta_reduction defs b2);
+          assert_alpha_equiv (normalize_by_eval defs b1) (normalize_by_eval defs b2);
           (defs, ctx, a, b2)
       )
   | Def (i, j, name) ->
@@ -276,13 +266,18 @@ let derive book deriv =
       else
         raise @@ DerivError (NotTypeKind (typ, kind))
 
-let verify () =
+let verify () : judgement Vector.t =
   let derivs = read_derivs () in
 
-  let book = Vector.create ~dummy:([], [], Type, Kind) in
+  let book = Vector.create ~dummy:([], [], (Type : term), (Kind : term)) in
   iteri (fun i deriv ->
-    printf "%d\n" i;
-    try Vector.push book (derive book deriv) with
+    (* printf "%d\n" i; *)
+    try
+      let time1 = Unix.gettimeofday () in
+      Vector.push book (derive book deriv);
+      let time2 = Unix.gettimeofday () in
+      printf "%d %f\n" i (time2 -. time1);
+    with
     | DerivError err ->
         printf "line %d\n" i;
         print_deriv_error book deriv err;
