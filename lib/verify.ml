@@ -147,6 +147,27 @@ let assert_alpha_equiv_definitions defs1 defs2 =
   else
     raise @@ DerivError (NotSameLengthDefinitions (defs1, defs2))
 
+let assert_same_definition def1 def2 =
+  let (_, name1, _, _) = def1 in
+  let (_, name2, _, _) = def2 in
+  if name1 = name2 then
+    ()
+  else
+    raise @@ DerivError (DoNotMatchDefinition (def1, def2))
+
+let assert_same_definitions defs1 defs2 =
+  if length defs1 = length defs2 then
+    iter2 assert_same_definition defs1 defs2
+  else
+    raise @@ DerivError (NotSameLengthDefinitions (defs1, defs2))
+
+let rec assert_new_definition defs name =
+  match defs with
+  | [] -> ()
+  | (_, name', _, _) as def :: _ when name' = name ->
+      raise @@ DerivError (ConstAlreadyDefined (def, name))
+  | _ :: defs -> assert_new_definition defs name
+
 let rec read_derivs () =
   let str = read_line () in
   let line, list = match String.split_on_char ' ' str with
@@ -188,14 +209,14 @@ let derive (book : judgement Vector.t) deriv : judgement =
   | Weak (i, j, x) ->
       let (defs1, ctx1, a, b) = Vector.get book i in
       let (defs2, ctx2, c, s) = Vector.get book j in
-      assert_alpha_equiv_definitions defs1 defs2;
+      assert_same_definitions defs1 defs2;
       assert_alpha_equiv_context ctx1 ctx2;
       assert_sort s;
       (defs1, (x, c) :: ctx1, a, b)
   | Form (i, j) ->
       (match (Vector.get book i, Vector.get book j) with
       | (defs1, ctx1, a1, s1), (defs2, (x, a2) :: ctx2, b, s2) ->
-          assert_alpha_equiv_definitions defs1 defs2;
+          assert_same_definitions defs1 defs2;
           assert_alpha_equiv_context ctx1 ctx2;
           assert_alpha_equiv a1 a2;
           assert_sort s1;
@@ -205,7 +226,7 @@ let derive (book : judgement Vector.t) deriv : judgement =
   | App (i, j) ->
       (match (Vector.get book i, Vector.get book j) with
       | (defs, ctx, t1, Pi (x, a, b)), (defs', ctx', t2, a') ->
-          assert_alpha_equiv_definitions defs defs';
+          assert_same_definitions defs defs';
           assert_alpha_equiv_context ctx ctx';
           assert_alpha_equiv a a';
           (defs, ctx, App (t1, t2), subst b x t2)
@@ -213,7 +234,7 @@ let derive (book : judgement Vector.t) deriv : judgement =
   | Abs (i, j) ->
       (match (Vector.get book i, Vector.get book j) with
       | (defs, (x, a) :: ctx, t, b), (defs', ctx', Pi (x', a', b'), s) ->
-          assert_alpha_equiv_definitions defs defs';
+          assert_same_definitions defs defs';
           assert_alpha_equiv_context ctx ctx';
           assert_same_name x x';
           assert_alpha_equiv a a';
@@ -226,7 +247,7 @@ let derive (book : judgement Vector.t) deriv : judgement =
   | Conv (i, j) ->
       (match (Vector.get book i, Vector.get book j) with
       | (defs, ctx, a, b1), (defs', ctx', b2, s) ->
-          assert_alpha_equiv_definitions defs defs';
+          assert_same_definitions defs defs';
           assert_alpha_equiv_context ctx ctx';
           assert_sort s;
           assert_alpha_equiv (normalize_by_eval defs b1) (normalize_by_eval defs b2);
@@ -235,14 +256,16 @@ let derive (book : judgement Vector.t) deriv : judgement =
   | Def (i, j, name) ->
       (match (Vector.get book i, Vector.get book j) with
       | (defs, ctx1, term1, type1), (defs', ctx2, term2, type2) ->
-          assert_alpha_equiv_definitions defs defs';
+          assert_same_definitions defs defs';
+          assert_new_definition defs name;
           let def = (ctx2, name, Some term2, type2) in
           (def :: defs, ctx1, term1, type1)
       )
   | DefPrim (i, j, name) ->
       (match (Vector.get book i, Vector.get book j) with
       | (defs, ctx1, term1, type1), (defs', ctx2, type2, s) ->
-          assert_alpha_equiv_definitions defs defs';
+          assert_same_definitions defs defs';
+          assert_new_definition defs name;
           assert_sort s;
           let def = (ctx2, name, None, type2) in
           (def :: defs, ctx1, term1, type1)
@@ -253,7 +276,7 @@ let derive (book : judgement Vector.t) deriv : judgement =
         let (ctx2, name, _, typ) = nth (rev defs) k in
         let args = map (fun j ->
           let (defs', ctx', u, v) = Vector.get book j in
-          assert_alpha_equiv_definitions defs defs';
+          assert_same_definitions defs defs';
           assert_alpha_equiv_context ctx ctx';
           (u, v)
         ) js in

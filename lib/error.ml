@@ -23,6 +23,9 @@ let print_deriv_error book deriv err =
       printf "'%a'\n" pp_defs defs2
   | NotSameLengthParamArg (name, ctx, args) ->
       printf "the cotnext of constant '%s' is '%a', but given argument list is '%a'" name pp_ctx ctx pp_term_list args
+  | ConstAlreadyDefined (def, name) ->
+      printf "constant '%s' is already defined:\n" name;
+      printf "  %a\n" pp_def def
   | DoNotMatchDefinition (def1, def2) ->
       printf "'%a' and '%a' must match\n" pp_def def1 pp_def def2
   | UndefinedConst name ->
