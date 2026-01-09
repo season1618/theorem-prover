@@ -6,14 +6,14 @@ open List
 type value
   = Neut of neut
   | Lam of (value -> value) * value
-  | Pi  of (value -> value) * value
 
 and neut
   = Type
   | Kind
   | Const of string * value list
   | Var of string
-  | Cons of neut * value
+  | App of neut * value
+  | Pi of (value -> value) * value
 
 let rec find_var env name =
   match env with
@@ -40,12 +40,12 @@ let rec eval defs (env : (string * value) list) (term : term) : value =
   | Var x -> find_var env x
   | App (t1, t2) -> apply (eval defs env t1) (eval defs env t2)
   | Lam (x, a, t) -> Lam ((fun v -> eval defs ((x, v) :: env) t), eval defs env a)
-  | Pi  (x, a, t) -> Pi  ((fun v -> eval defs ((x, v) :: env) t), eval defs env a)
+  | Pi  (x, a, t) -> Neut (Pi ((fun v -> eval defs ((x, v) :: env) t), eval defs env a))
 
 and apply v1 v2 =
   match v1 with
-  | Neut n -> Neut (Cons (n, v2))
-  | Lam (f, _) | Pi (f, _) -> f v2
+  | Neut n -> Neut (App (n, v2))
+  | Lam (f, _) -> f v2
 
 let rec readback value : term =
   match value with
@@ -53,12 +53,9 @@ let rec readback value : term =
   | Neut Kind -> Kind
   | Neut (Const (name, vals)) -> Const (name, map readback vals)
   | Neut (Var x) -> Var x
-  | Neut (Cons (n, t)) ->
-      let t1 = readback (Neut n) in
-      let t2 = readback t in
-      App (t1, t2)
+  | Neut (App (n, t)) -> App (readback (Neut n), readback t)
+  | Neut (Pi (f, a)) -> let x = fresh_var () in Pi (x, readback a, readback (f (Neut (Var x))))
   | Lam (f, a) -> let x = fresh_var () in Lam (x, readback a, readback (f (Neut (Var x))))
-  | Pi  (f, a) -> let x = fresh_var () in Pi  (x, readback a, readback (f (Neut (Var x))))
 
 let normalize_by_eval defs term =
   readback (eval defs [] term)
