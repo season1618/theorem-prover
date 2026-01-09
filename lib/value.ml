@@ -59,3 +59,19 @@ let rec readback value : term =
 
 let normalize_by_eval defs term =
   readback (eval defs [] term)
+
+let rec equal v1 v2 =
+  match (v1, v2) with
+  | (Neut Type, Neut Type) | (Neut Kind, Neut Kind) -> true
+  | (Neut (Const (name1, args1)), Neut (Const (name2, args2))) ->
+      name1 = name2 && for_all2 equal args1 args2
+  | (Neut (Var x1), Neut (Var x2)) -> x1 = x2
+  | (Neut (App (n1, v1)), Neut (App (n2, v2))) ->
+      equal (Neut n1) (Neut n2) && equal v1 v2
+  | (Neut (Pi (f1, a1)), Neut (Pi (f2, a2))) | (Lam (f1, a1), Lam (f2, a2)) ->
+      equal a1 a2 &&
+      let x = fresh_var () in equal (f1 (Neut (Var x))) (f2 (Neut (Var x)))
+  | (_, _) -> false
+
+let alpha_beta_delta_equiv defs t1 t2 =
+  equal (eval defs [] t1) (eval defs [] t2)

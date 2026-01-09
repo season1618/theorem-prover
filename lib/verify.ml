@@ -121,6 +121,9 @@ let assert_same_name x1 x2 =
 let assert_alpha_equiv t1 t2 =
   if alpha_equiv t1 t2 then () else raise @@ DerivError (NotAlphaEquivalence (t1, t2))
 
+let assert_alpha_beta_delta_equiv defs t1 t2 =
+  if alpha_beta_delta_equiv defs t1 t2 then () else raise @@ DerivError (NotAlphaEquivalence (t1, t2))
+
 let assert_alpha_equiv_context ctx1 ctx2 =
   if length ctx1 = length ctx2 then
     iter2 (fun (x1, t1) -> fun (x2, t2) ->
@@ -250,7 +253,7 @@ let derive (book : judgement Vector.t) deriv : judgement =
           assert_same_definitions defs defs';
           assert_alpha_equiv_context ctx ctx';
           assert_sort s;
-          assert_alpha_equiv (normalize_by_eval defs b1) (normalize_by_eval defs b2);
+          assert_alpha_beta_delta_equiv defs b1 b2;
           (defs, ctx, a, b2)
       )
   | Def (i, j, name) ->
