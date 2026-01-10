@@ -6,7 +6,7 @@ open Value
 open List
 open Printf
 
-let assert_sort (t : term) =
+let assert_sort t =
   match t with
   | Type | Kind -> ()
   | _ -> raise @@ DerivError (NotSort t)
@@ -98,7 +98,7 @@ let rec read_derivs () =
     | _ -> raise @@ Failure ("invalid rule : " ^ rule))
     :: read_derivs ()
 
-let derive (book : judgement Vector.t) deriv : judgement =
+let derive book deriv =
   match deriv with
   | Sort -> ([], [], Type, Kind)
   | Var (i, x) ->
@@ -188,10 +188,8 @@ let derive (book : judgement Vector.t) deriv : judgement =
       else
         raise @@ DerivError (NotTypeKind (typ, kind))
 
-let verify () : judgement Vector.t =
-  let derivs = read_derivs () in
-
-  let book = Vector.create ~dummy:([], [], (Type : term), (Kind : term)) in
+let verify derivs =
+  let book = Vector.create ~dummy:([], [], Type, Kind) in
   iteri (fun i deriv ->
     (* printf "%d\n" i; *)
     try

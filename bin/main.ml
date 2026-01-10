@@ -2,5 +2,6 @@ open Theorem_prover.Type
 open Theorem_prover.Verify
 
 let () =
-  let book = verify () in
+  let derivs = read_derivs () in
+  let book = verify derivs in
   print_book book
