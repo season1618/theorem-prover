@@ -83,10 +83,16 @@ let rec alpha_equiv t1 t2 =
       alpha_equiv a1 a2 && let y = fresh_var () in alpha_equiv (rename_fresh t1 x1 y) (rename_fresh t2 x2 y)
   | (_, _) -> false
 
+let rec find_const defs name =
+  match defs with
+  | [] -> raise @@ DerivError (UndefinedConst name)
+  | (ctx, name', term, typ) :: _ when name' = name -> (ctx, term, typ)
+  | _ :: defs -> find_const defs name
+
 let rec normalize defs term =
   match term with
   | Const (name, args) ->
-      let (ctx, body, _) = find_def defs name in
+      let (ctx, body, _) = find_const defs name in
       let params = rev ctx in
       let args = map (normalize defs) args in
       if length params = length args then

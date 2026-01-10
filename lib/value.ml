@@ -1,5 +1,6 @@
 open Type
 open Util
+open Lambda
 
 open List
 
@@ -26,7 +27,7 @@ let rec eval defs (env : (string * value) list) (term : term) : value =
   | Type -> Neut Type
   | Kind -> Neut Kind
   | Const (name, args) ->
-      let (ctx, body, _) = find_def defs name in
+      let (ctx, body, _) = find_const defs name in
       let params = rev ctx in
       let vals = map (eval defs env) args in
       if length params = length args then
