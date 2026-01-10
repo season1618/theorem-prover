@@ -40,6 +40,12 @@ type syntax_error
   | InvalidVariable of string
   | NoVariable
 
+type type_error
+  = KindHasNoType
+  | VarUndef of string
+  | NotPi of term
+  | TypeMismatch of term * term
+
 type deriv_error
   = NotSort of term
   | NotSameName of string * string
@@ -58,6 +64,8 @@ type deriv_error
 exception TokenError of token_error
 
 exception SyntaxError of syntax_error
+
+exception TypeError of type_error
 
 exception DerivError of deriv_error
 

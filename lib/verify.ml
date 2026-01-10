@@ -123,6 +123,56 @@ let rec read_derivs () =
     | _ -> raise @@ Failure ("invalid rule : " ^ rule))
     :: read_derivs ()
 
+let rec infer_type defs ctx term =
+  match term with
+  | Type -> Kind
+  | Kind -> raise @@ TypeError KindHasNoType
+  | Const (name, args) ->
+      let (ctx, _, typ) = find_const defs name in
+      subst_simul typ (map2 (fun (x, _) arg -> (x, arg)) (rev ctx) args)
+  | Var x -> find_var ctx x
+  | App (term1, term2) ->
+      let type1 = normalize_by_eval defs (infer_type defs ctx term1) in
+      let type2 = infer_type defs ctx term2 in
+      (match (type1, type2) with
+      | (Pi (x, a, b), a') ->
+          assert_alpha_beta_delta_equiv defs a a';
+          subst b x term2
+      | (_, _) -> raise @@ TypeError (NotPi type1)
+      )
+  | Lam (x, a, t) ->
+      let b = infer_type defs ((x, a) :: ctx) t in
+      Pi (x, a, b)
+  | Pi (x, a, b) ->
+      let s = infer_type defs ((x, a) :: ctx) b in
+      assert_sort s;
+      s
+
+let check_definition defs (ctx, _, term, expected) =
+  match term with
+  | Some term ->
+      let infered = infer_type defs ctx term in
+      if alpha_beta_delta_equiv defs expected infered then
+        ()
+      else
+        raise @@ TypeError (TypeMismatch (expected, infered))
+  | None -> ()
+
+let rec check_definitions def_list defs =
+  match def_list with
+  | [] -> ()
+  | (def :: def_list) ->
+      (try check_definition defs def with
+      | TypeError err ->
+          print_type_error err;
+          printf "    %a\n" pp_def def;
+          exit 0
+      );
+      check_definitions def_list (def :: defs)
+
+let check_definitions def_list =
+  check_definitions def_list []
+
 let derive book deriv =
   match deriv with
   | Sort -> ([], [], Type, Kind)

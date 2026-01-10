@@ -89,6 +89,12 @@ let rec find_const defs name =
   | (ctx, name', term, typ) :: _ when name' = name -> (ctx, term, typ)
   | _ :: defs -> find_const defs name
 
+let rec find_var ctx name =
+  match ctx with
+  | [] -> raise @@ TypeError (VarUndef name)
+  | (name', typ) :: _ when name' = name -> typ
+  | _ :: ctx -> find_var ctx name
+
 let rec normalize defs term =
   match term with
   | Const (name, args) ->

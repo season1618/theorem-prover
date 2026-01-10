@@ -2,6 +2,17 @@ open Type
 
 open Format
 
+let print_type_error err =
+  printf "Type Error: ";
+  match err with
+  | KindHasNoType -> printf "kind has no type\n"
+  | VarUndef var -> printf "variable '%s' is undefined\n" var
+  | NotPi term -> printf "'%a' must be Π-term\n" pp_term term
+  | TypeMismatch (expected, infered) ->
+      printf "two types must be αβδ-equivalent\n";
+      printf "- expected: '%a'\n" pp_term expected;
+      printf "- infered : '%a'\n" pp_term infered
+
 let print_deriv_error book deriv err =
   printf "Derivation Error: ";
   (match err with
