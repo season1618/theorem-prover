@@ -10,7 +10,9 @@ let print_deriv_error book deriv err =
   | NotSameName (x1, x2) ->
       printf "two variables '%s' and '%s' must be same\n" x1 x2
   | NotAlphaEquivalence (t1, t2) ->
-      printf "two terms '%a' and '%a' must be alpha equivalent\n" pp_term t1 pp_term t2
+      printf "two terms '%a' and '%a' must be α-equivalent\n" pp_term t1 pp_term t2
+  | NotAlphaBetaDeltaEquiv (defs, t1, t2) ->
+      printf "two terms '%a' and '%a' must be αβδ-equivalent in %a\n" pp_term t1 pp_term t2 pp_defs defs
   | EmptyContext ->
       printf "the context must be non-empty\n"
   | NotSameLengthContext (ctx1, ctx2) ->

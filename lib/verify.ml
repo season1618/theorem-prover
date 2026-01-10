@@ -122,7 +122,7 @@ let assert_alpha_equiv t1 t2 =
   if alpha_equiv t1 t2 then () else raise @@ DerivError (NotAlphaEquivalence (t1, t2))
 
 let assert_alpha_beta_delta_equiv defs t1 t2 =
-  if alpha_beta_delta_equiv defs t1 t2 then () else raise @@ DerivError (NotAlphaEquivalence (t1, t2))
+  if alpha_beta_delta_equiv defs t1 t2 then () else raise @@ DerivError (NotAlphaBetaDeltaEquiv (defs, t1, t2))
 
 let assert_alpha_equiv_context ctx1 ctx2 =
   if length ctx1 = length ctx2 then

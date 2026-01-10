@@ -44,6 +44,7 @@ type deriv_error
   = NotSort of term
   | NotSameName of string * string
   | NotAlphaEquivalence of term * term
+  | NotAlphaBetaDeltaEquiv of definitions * term * term
   | EmptyContext
   | NotSameLengthContext of context * context
   | NotSameLengthDefinitions of definitions * definitions
