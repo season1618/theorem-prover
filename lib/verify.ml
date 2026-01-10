@@ -2,9 +2,10 @@ open Type
 open Error
 open Lambda
 open Value
+open Parser
 
 open List
-open Printf
+open Format
 
 let assert_sort t =
   match t with
@@ -66,6 +67,30 @@ let rec assert_new_definition defs name =
   | (_, name', _, _) as def :: _ when name' = name ->
       raise @@ DerivError (ConstAlreadyDefined (def, name))
   | _ :: defs -> assert_new_definition defs name
+
+let rec read_defs () =
+  match read_line () with
+  | "END" -> []
+  | "def2" ->
+      let n = int_of_string (read_line ()) in
+      let ctx = rev @@ init n (fun _ ->
+        let var = read_line () in
+        let (typ, _) = parse (read_line ()) in
+        (var, typ)
+      ) in
+      let name = read_line () in
+      let body = let body = read_line () in
+        if body = "#" then
+          None
+        else
+          let (body, _) = parse body in
+          Some body
+        in
+      let (typ, _) = parse (read_line ()) in
+      ignore @@ read_line ();
+      (ctx, name, body, typ) :: read_defs ()
+  | "" -> read_defs ()
+  | str -> raise @@ Failure str
 
 let rec read_derivs () =
   let str = read_line () in
