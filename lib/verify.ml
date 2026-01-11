@@ -173,7 +173,73 @@ let rec check_definitions def_list defs =
 let check_definitions def_list =
   check_definitions def_list []
 
-let derive book deriv =
+let reg_deriv book deriv =
+  Vector.push book deriv;
+  Vector.length book - 1
+
+let rec derive_type_noctx book defs = reg_deriv book @@
+  match defs with
+  | [] -> Sort
+  | (ctx, name, term, typ) :: defs ->
+      (match term with
+      | Some term ->
+          let deriv1 = derive_type_noctx book defs in
+          let deriv2 = derive_term book defs ctx term in
+          Def (deriv1, deriv2, name)
+      | None ->
+          let deriv1 = derive_type_noctx book defs in
+          let deriv2 = derive_term book defs ctx typ in
+          DefPrim (deriv1, deriv2, name)
+      )
+
+and derive_type book defs ctx =
+  match ctx with
+  | [] -> derive_type_noctx book defs
+  | (x, a) :: ctx -> reg_deriv book @@
+      let deriv1 = derive_type book defs ctx in
+      let deriv2 = derive_term book defs ctx a in
+      Weak (deriv1, deriv2, x)
+
+and derive_var book defs ctx name =
+  match ctx with
+  | [] -> raise @@ TypeError (VarUndef name)
+  | (name', typ) :: ctx -> reg_deriv book @@
+      if name' = name then
+        Var (derive_term book defs ctx typ, name)
+      else
+        Weak (derive_var book defs ctx name, derive_term book defs ctx typ, name')
+
+and derive_term book defs ctx term = 
+  match term with
+  | Type -> derive_type book defs ctx
+  | Kind -> raise @@ TypeError KindHasNoType
+  | Const (name, args) -> reg_deriv book @@
+      let (ctx, _, _) = find_const defs name in
+      let def_idx = Option.get @@ find_index (fun (_, name', _, _) -> name' = name) (rev defs) in
+      let deriv0 = derive_type book defs ctx in
+      let derivs = map (derive_term book defs ctx) args in
+      Inst (deriv0, derivs, def_idx)
+  | Var x -> derive_var book defs ctx x
+  | App (term1, term2) -> reg_deriv book @@
+      let deriv1 = derive_term book defs ctx term1 in
+      let deriv2 = derive_term book defs ctx term2 in
+      App (deriv1, deriv2)
+  | Lam (x, a, t) -> reg_deriv book @@
+      let b = infer_type defs ((x, a) :: ctx) t in
+      let deriv1 = derive_term book defs ((x, a) :: ctx) t in
+      let deriv2 = derive_term book defs ctx (Pi (x, a, b)) in
+      Abs (deriv1, deriv2)
+  | Pi (x, a, b) -> reg_deriv book @@
+      let deriv1 = derive_term book defs ctx a in
+      let deriv2 = derive_term book defs ((x, a) :: ctx) b in
+      Form (deriv1, deriv2)
+
+let gen_derivs def_list =
+  let book = Vector.create ~dummy:Sort in
+  ignore @@ derive_type_noctx book (rev def_list);
+  book
+
+let derive book (deriv : deriv) =
   match deriv with
   | Sort -> ([], [], Type, Kind)
   | Var (i, x) ->

@@ -1,8 +1,9 @@
+open Theorem_prover.Type
 open Theorem_prover.Verify
 
 let () =
-  let defs = read_defs () in
-  check_definitions defs
-  (* let derivs = read_derivs () in
-  let book = verify derivs in
-  print_book book *)
+  let def_list = read_defs () in
+  let derivs = gen_derivs def_list in
+  print_derivs derivs;
+  let book = verify @@ Vector.to_list derivs in
+  print_book book

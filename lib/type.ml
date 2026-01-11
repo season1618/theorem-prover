@@ -121,6 +121,24 @@ let pp_judge ff (defs, ctx, term, typ) =
 let pp_judge_simp ff (_, _, term, typ) =
   fprintf ff ".. |- %a : %a" pp_term term pp_term typ
 
+let pp_deriv ff deriv =
+  match deriv with
+  | Sort -> fprintf ff "sort"
+  | Var (i, x) -> fprintf ff "var %d %s" i x
+  | Weak (i, j, x) -> fprintf ff "weak %d %d %s" i j x
+  | Form (i, j) -> fprintf ff "form %d %d" i j
+  | App (i, j) -> fprintf ff "appl %d %d" i j
+  | Abs (i, j) -> fprintf ff "abst %d %d" i j
+  | Conv (i, j) -> fprintf ff "conv %d %d" i j
+  | Def (i, j, c) -> fprintf ff "def %d %d %s" i j c
+  | DefPrim (i, j, c) -> fprintf ff "defpr %d %d %s" i j c
+  | Inst (i, js, k) ->
+      let n = length js in
+      fprintf ff "inst %d %d %a %d" i n (pp_print_list ~pp_sep:pp_print_space pp_print_int) js k
+
+let print_derivs derivs =
+  Vector.iter (fun deriv -> printf "%a\n" pp_deriv deriv) derivs
+
 let print_book book = Vector.iteri (fun line judge -> printf "%d : %a\n" line pp_judge judge) book
 
 let print_deriv book deriv =
