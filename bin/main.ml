@@ -5,5 +5,5 @@ let () =
   let def_list = read_defs () in
   let derivs = gen_derivs def_list in
   print_derivs derivs;
-  let book = verify @@ Vector.to_list derivs in
+  let book = verify_derivs @@ Vector.to_list derivs in
   print_book book

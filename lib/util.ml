@@ -1,5 +1,3 @@
-open Type
-
 let var_count = ref(0)
 
 let fresh_var () =

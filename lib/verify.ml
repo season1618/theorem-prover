@@ -239,7 +239,7 @@ let gen_derivs def_list =
   ignore @@ derive_type_noctx book (rev def_list);
   book
 
-let derive book (deriv : deriv) =
+let verify_deriv book deriv =
   match deriv with
   | Sort -> ([], [], Type, Kind)
   | Var (i, x) ->
@@ -329,13 +329,13 @@ let derive book (deriv : deriv) =
       else
         raise @@ DerivError (NotTypeKind (typ, kind))
 
-let verify derivs =
+let verify_derivs derivs =
   let book = Vector.create ~dummy:([], [], Type, Kind) in
   iteri (fun i deriv ->
     (* printf "%d\n" i; *)
     try
       let time1 = Unix.gettimeofday () in
-      Vector.push book (derive book deriv);
+      Vector.push book (verify_deriv book deriv);
       let time2 = Unix.gettimeofday () in
       printf "%d %f\n" i (time2 -. time1);
     with
