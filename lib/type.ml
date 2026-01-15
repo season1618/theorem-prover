@@ -140,7 +140,7 @@ let print_derivs ff derivs =
   Vector.iteri (fun line deriv -> fprintf ff "%d %a\n" line pp_deriv deriv) derivs;
   fprintf ff "-1\n"
 
-let print_book book = Vector.iteri (fun line judge -> printf "%d : %a\n" line pp_judge judge) book
+let print_book book = Vector.iteri (fun _ judge -> printf "%a\n" pp_judge judge) book
 
 let print_deriv book deriv =
   match deriv with
