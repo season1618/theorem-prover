@@ -68,28 +68,28 @@ let rec assert_new_definition defs name =
       raise @@ DerivError (ConstAlreadyDefined (def, name))
   | _ :: defs -> assert_new_definition defs name
 
-let rec read_defs () =
-  match read_line () with
+let rec read_defs file =
+  match input_line file with
   | "END" -> []
   | "def2" ->
-      let n = int_of_string (read_line ()) in
+      let n = int_of_string (input_line file) in
       let ctx = rev @@ init n (fun _ ->
-        let var = read_line () in
-        let (typ, _) = parse (read_line ()) in
+        let var = input_line file in
+        let (typ, _) = parse (input_line file) in
         (var, typ)
       ) in
-      let name = read_line () in
-      let body = let body = read_line () in
+      let name = input_line file in
+      let body = let body = input_line file in
         if body = "#" then
           None
         else
           let (body, _) = parse body in
           Some body
         in
-      let (typ, _) = parse (read_line ()) in
-      ignore @@ read_line ();
-      (ctx, name, body, typ) :: read_defs ()
-  | "" -> read_defs ()
+      let (typ, _) = parse (input_line file) in
+      ignore @@ input_line file;
+      (ctx, name, body, typ) :: read_defs file
+  | "" -> read_defs file
   | str -> raise @@ Failure str
 
 let rec read_derivs () =

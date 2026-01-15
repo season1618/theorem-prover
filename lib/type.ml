@@ -136,8 +136,9 @@ let pp_deriv ff deriv =
       let n = length js in
       fprintf ff "inst %d %d %a %d" i n (pp_print_list ~pp_sep:pp_print_space pp_print_int) js k
 
-let print_derivs derivs =
-  Vector.iter (fun deriv -> printf "%a\n" pp_deriv deriv) derivs
+let print_derivs ff derivs =
+  Vector.iteri (fun line deriv -> fprintf ff "%d %a\n" line pp_deriv deriv) derivs;
+  fprintf ff "-1\n"
 
 let print_book book = Vector.iteri (fun line judge -> printf "%d : %a\n" line pp_judge judge) book
 
