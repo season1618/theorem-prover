@@ -180,18 +180,28 @@ let reg_deriv book deriv =
 let rec derive_type_noctx book cache defs =
   match defs with
   | [] -> Sort
-  | (ctx, name, term, typ) :: defs ->
-      (match term with
-      | Some term ->
-          let deriv1 = derive_term_memo book cache defs [] Type in
-          let deriv2 = derive_term_memo book cache defs ctx term in
-          let deriv3 = derive_term_memo book cache defs ctx typ in
-          Def (deriv1, reg_deriv book @@ Conv (deriv2, deriv3), name)
-      | None ->
-          let deriv1 = derive_term_memo book cache defs [] Type in
-          let deriv2 = derive_term_memo book cache defs ctx typ in
-          DefPrim (deriv1, deriv2, name)
-      )
+  | (ctx, name, term, typ) as def :: defs ->
+      try
+        (match term with
+        | Some term ->
+            let deriv1 = derive_term_memo book cache defs [] Type in
+            let deriv2 = if infer_type defs ctx term = Kind then
+              derive_term_memo book cache defs ctx term
+            else
+              let deriv2 = derive_term_memo book cache defs ctx term in
+              let deriv3 = derive_term_memo book cache defs ctx typ in
+              reg_deriv book @@ Conv (deriv2, deriv3) in
+            Def (deriv1, deriv2, name)
+        | None ->
+            let deriv1 = derive_term_memo book cache defs [] Type in
+            let deriv2 = derive_term_memo book cache defs ctx typ in
+            DefPrim (deriv1, deriv2, name)
+        )
+      with
+      | TypeError err ->
+          print_type_error err;
+          printf "    %a\n" pp_def def;
+          exit 0
 
 and derive_type book cache defs ctx =
   match ctx with

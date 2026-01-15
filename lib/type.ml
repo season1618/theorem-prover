@@ -121,6 +121,19 @@ let pp_judge ff (defs, ctx, term, typ) =
 let pp_judge_simp ff (_, _, term, typ) =
   fprintf ff ".. |- %a : %a" pp_term term pp_term typ
 
+let rule_name deriv =
+  match deriv with
+  | Sort -> "sort"
+  | Var (_, _) -> "var"
+  | Weak (_, _, _) -> "weak"
+  | Form (_, _) -> "form"
+  | App (_, _) -> "app"
+  | Abs (_, _) -> "abs"
+  | Conv (_, _) -> "conv"
+  | Def (_, _, _) -> "def"
+  | DefPrim (_, _, _) -> "def-prim"
+  | Inst (_, _, _) -> "inst"
+
 let pp_deriv ff deriv =
   match deriv with
   | Sort -> fprintf ff "sort"
@@ -143,12 +156,14 @@ let print_derivs ff derivs =
 let print_book book = Vector.iteri (fun _ judge -> printf "%a\n" pp_judge judge) book
 
 let print_deriv book deriv =
+  printf "%s rule\n" (rule_name deriv);
   match deriv with
   | Sort -> ()
   | Var (i, _) ->
       printf "%a\n" pp_judge (Vector.get book i)
   | Weak (i, j, _) | Form (i, j) | App (i, j) | Abs (i, j) | Conv (i, j) | Def (i, j, _) | DefPrim (i, j, _) ->
-      printf "%a %a\n" pp_judge (Vector.get book i) pp_judge (Vector.get book j)
+      printf "  %a\n" pp_judge (Vector.get book i);
+      printf "  %a\n" pp_judge (Vector.get book j)
   | Inst (i, js, k) ->
       let judge0 = Vector.get book i in
       let (defs, _, _, _) = judge0 in
