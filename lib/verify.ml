@@ -185,7 +185,8 @@ let rec derive_type_noctx book defs = reg_deriv book @@
       | Some term ->
           let deriv1 = derive_type_noctx book defs in
           let deriv2 = derive_term book defs ctx term in
-          Def (deriv1, deriv2, name)
+          let deriv3 = derive_term book defs ctx typ in
+          Def (deriv1, reg_deriv book @@ Conv (deriv2, deriv3), name)
       | None ->
           let deriv1 = derive_type_noctx book defs in
           let deriv2 = derive_term book defs ctx typ in
@@ -214,7 +215,6 @@ and derive_term book defs ctx term =
   | Type -> derive_type book defs ctx
   | Kind -> raise @@ TypeError KindHasNoType
   | Const (name, args) -> reg_deriv book @@
-      let (ctx, _, _) = find_const defs name in
       let def_idx = Option.get @@ find_index (fun (_, name', _, _) -> name' = name) (rev defs) in
       let deriv0 = derive_type book defs ctx in
       let derivs = map (derive_term book defs ctx) args in

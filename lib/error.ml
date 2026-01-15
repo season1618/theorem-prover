@@ -28,12 +28,12 @@ let print_deriv_error book deriv err =
       printf "the context must be non-empty\n"
   | NotSameLengthContext (ctx1, ctx2) ->
       printf "the context length do not match\n";
-      printf "'%a'\n" pp_ctx ctx1;
-      printf "'%a'\n" pp_ctx ctx2
+      printf "  '%a'\n" pp_ctx ctx1;
+      printf "  '%a'\n" pp_ctx ctx2
   | NotSameLengthDefinitions (defs1, defs2) ->
       printf "the definitions length do not match\n";
-      printf "'%a'\n" pp_defs defs1;
-      printf "'%a'\n" pp_defs defs2
+      printf "  '%a'\n" pp_defs defs1;
+      printf "  '%a'\n" pp_defs defs2
   | NotSameLengthParamArg (name, ctx, args) ->
       printf "the cotnext of constant '%s' is '%a', but given argument list is '%a'" name pp_ctx ctx (pp_list pp_term) args
   | ConstAlreadyDefined (def, name) ->
