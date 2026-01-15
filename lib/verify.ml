@@ -177,7 +177,12 @@ let reg_deriv book deriv =
   Vector.push book deriv;
   Vector.length book - 1
 
-let rec derive_type_noctx book cache defs =
+let rec derive_conv book cache (defs, ctx, term, typ) =
+  let deriv1 = derive_term_memo book cache defs ctx term in
+  let deriv2 = derive_term_memo book cache defs ctx typ in
+  reg_deriv book (Conv (deriv1, deriv2))
+
+and derive_type_noctx book cache defs =
   match defs with
   | [] -> Sort
   | (ctx, name, term, typ) as def :: defs ->
@@ -188,9 +193,7 @@ let rec derive_type_noctx book cache defs =
             let deriv2 = if infer_type defs ctx term = Kind then
               derive_term_memo book cache defs ctx term
             else
-              let deriv2 = derive_term_memo book cache defs ctx term in
-              let deriv3 = derive_term_memo book cache defs ctx typ in
-              reg_deriv book @@ Conv (deriv2, deriv3) in
+              derive_conv book cache (defs, ctx, term, typ) in
             Def (deriv1, deriv2, name)
         | None ->
             let deriv1 = derive_term_memo book cache defs [] Type in
