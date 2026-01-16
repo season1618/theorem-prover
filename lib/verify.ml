@@ -136,8 +136,10 @@ let rec infer_type defs ctx term =
       let type2 = infer_type defs ctx term2 in
       (match (type1, type2) with
       | (Pi (x, a, b), a') ->
-          assert_alpha_beta_delta_equiv defs a a';
-          subst b x term2
+          if alpha_beta_delta_equiv defs a a' then
+            subst b x term2
+          else
+            raise @@ TypeError (TypeMismatchApp (term1, type1, term2, type2, a, a'));
       | (_, _) -> raise @@ TypeError (NotPi type1)
       )
   | Lam (x, a, t) ->

@@ -45,6 +45,7 @@ type type_error
   | VarUndef of string
   | NotPi of term
   | TypeMismatch of term * term
+  | TypeMismatchApp of term * term * term * term * term * term
 
 type deriv_error
   = NotSort of term

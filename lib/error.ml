@@ -12,6 +12,11 @@ let print_type_error err =
       printf "two types must be αβδ-equivalent\n";
       printf "- expected: '%a'\n" pp_term expected;
       printf "- infered : '%a'\n" pp_term infered
+  | TypeMismatchApp (term1, type1, term2, type2, a, a') ->
+      printf "in application of 2 terms\n";
+      printf "- '%a : %a'\n" pp_term term1 pp_term type1;
+      printf "- '%a : %a'\n" pp_term term2 pp_term type2;
+      printf "'%a' and '%a' must be αβδ-equivalent\n" pp_term a pp_term a'
 
 let print_deriv_error book deriv err =
   printf "Derivation Error: ";
