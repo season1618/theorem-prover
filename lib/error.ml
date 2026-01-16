@@ -7,6 +7,8 @@ let print_type_error err =
   match err with
   | KindHasNoType -> printf "kind has no type\n"
   | VarUndef var -> printf "variable '%s' is undefined\n" var
+  | NotSort (term, typ) ->
+      printf "'%a' must have sort-type ('*' or '□'), but %a is infered\n" pp_term term pp_term typ
   | NotPi term -> printf "'%a' must be Π-term\n" pp_term term
   | TypeMismatch (expected, infered) ->
       printf "two types must be αβδ-equivalent\n";

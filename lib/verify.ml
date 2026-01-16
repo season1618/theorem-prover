@@ -146,9 +146,11 @@ let rec infer_type defs ctx term =
       let b = infer_type defs ((x, a) :: ctx) t in
       Pi (x, a, b)
   | Pi (x, a, b) ->
-      let s = infer_type defs ((x, a) :: ctx) b in
-      assert_sort s;
-      s
+      let s = (infer_type defs ((x, a) :: ctx) b) in
+      if s = Type || s = Kind then
+        s
+      else
+        raise @@ TypeError (NotSort (term, s))
 
 let check_definition defs (ctx, _, term, expected) =
   match term with
@@ -185,10 +187,13 @@ let rec derive_conv book cache (defs, ctx, term, typ) =
   reg_deriv book (Conv (deriv1, deriv2))
 
 and derive_conv_norm book cache (defs, ctx, term) =
-  let deriv1 = derive_term_memo book cache defs ctx term in
   let typ = normalize_symb defs (infer_type defs ctx term) in
-  let deriv2 = derive_term_memo book cache defs ctx typ in
-  reg_deriv book (Conv (deriv1, deriv2))
+  if typ = Kind then
+    derive_term_memo book cache defs ctx term
+  else
+    let deriv1 = derive_term_memo book cache defs ctx term in
+    let deriv2 = derive_term_memo book cache defs ctx typ in
+    reg_deriv book (Conv (deriv1, deriv2))
 
 and derive_type_noctx book cache defs =
   match defs with
@@ -254,8 +259,8 @@ and derive_term book cache defs ctx term =
       let deriv2 = derive_term_memo book cache defs ctx (Pi (x, a, b)) in
       Abs (deriv1, deriv2)
   | Pi (x, a, b) ->
-      let deriv1 = derive_term_memo book cache defs ctx a in
-      let deriv2 = derive_term_memo book cache defs ((x, a) :: ctx) b in
+      let deriv1 = derive_conv_norm book cache (defs, ctx, a) in
+      let deriv2 = derive_conv_norm book cache (defs, ((x, a) :: ctx), b) in
       Form (deriv1, deriv2)
 
 and derive_term_memo book cache defs ctx term =

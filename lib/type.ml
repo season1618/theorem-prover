@@ -43,6 +43,7 @@ type syntax_error
 type type_error
   = KindHasNoType
   | VarUndef of string
+  | NotSort of term * term
   | NotPi of term
   | TypeMismatch of term * term
   | TypeMismatchApp of term * term * term * term * term * term

@@ -103,11 +103,11 @@ let rec subst_symb t substs =
   | Var x -> subst_var x substs
   | App (t1, t2) -> App (subst_symb t1 substs, subst_symb t2 substs)
   | Lam (x', a, t) ->
-      let vars = free_bind_var (t :: map (fun (_, u) -> u) substs) in
+      let vars = free_bind_var (t :: concat_map (fun (x, u) -> [(Var x : term); u]) substs) in
       let x'' = Char.escaped @@ fresh_char vars in
       Lam (x'', subst_symb a substs, subst_symb (rename_fresh t x' x'') substs)
   | Pi  (x', a, t) ->
-      let vars = free_bind_var (t :: map (fun (_, u) -> u) substs) in
+      let vars = free_bind_var (t :: concat_map (fun (x, u) -> [(Var x : term); u]) substs) in
       let x'' = Char.escaped @@ fresh_char vars in
       Pi  (x'', subst_symb a substs, subst_symb (rename_fresh t x' x'') substs)
 
