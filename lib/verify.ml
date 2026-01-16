@@ -182,6 +182,12 @@ let rec derive_conv book cache (defs, ctx, term, typ) =
   let deriv2 = derive_term_memo book cache defs ctx typ in
   reg_deriv book (Conv (deriv1, deriv2))
 
+and derive_conv_norm book cache (defs, ctx, term) =
+  let deriv1 = derive_term_memo book cache defs ctx term in
+  let typ = normalize_by_eval defs (infer_type defs ctx term) in
+  let deriv2 = derive_term_memo book cache defs ctx typ in
+  reg_deriv book (Conv (deriv1, deriv2))
+
 and derive_type_noctx book cache defs =
   match defs with
   | [] -> Sort
@@ -228,14 +234,17 @@ and derive_term book cache defs ctx term =
   | Type -> derive_type book cache defs ctx
   | Kind -> raise @@ TypeError KindHasNoType
   | Const (name, args) ->
+      let (ctx2, _, _) = find_const defs name in
       let def_idx = Option.get @@ find_index (fun (_, name', _, _) -> name' = name) (rev defs) in
       let deriv0 = derive_term_memo book cache defs ctx Type in
-      let derivs = map (derive_term_memo book cache defs ctx) args in
+      let (params, param_types) = split (rev ctx2) in
+      let types = map (fun param_type -> subst_simul param_type (combine params args)) param_types in
+      let derivs = map2 (fun arg typ -> derive_conv book cache (defs, ctx, arg, typ)) args types in
       Inst (deriv0, derivs, def_idx)
   | Var x -> derive_var book cache defs ctx x
   | App (term1, term2) ->
-      let deriv1 = derive_term_memo book cache defs ctx term1 in
-      let deriv2 = derive_term_memo book cache defs ctx term2 in
+      let deriv1 = derive_conv_norm book cache (defs, ctx, term1) in
+      let deriv2 = derive_conv_norm book cache (defs, ctx, term2) in
       App (deriv1, deriv2)
   | Lam (x, a, t) ->
       let b = infer_type defs ((x, a) :: ctx) t in
@@ -357,10 +366,10 @@ let verify_derivs derivs =
   iteri (fun i deriv ->
     (* printf "%d\n" i; *)
     try
-      let time1 = Unix.gettimeofday () in
+      (* let time1 = Unix.gettimeofday () in *)
       Vector.push book (verify_deriv book deriv);
-      let time2 = Unix.gettimeofday () in
-      printf "%d %f\n" i (time2 -. time1);
+      (* let time2 = Unix.gettimeofday () in *)
+      (* printf "%d %f\n" i (time2 -. time1); *)
     with
     | DerivError err ->
         printf "line %d\n" i;

@@ -70,6 +70,7 @@ exception TypeError of type_error
 exception DerivError of deriv_error
 
 let pp_sep ff () = fprintf ff ", "
+let pp_space ff () = fprintf ff " "
 let pp_list pp_elem = pp_print_list ~pp_sep:pp_sep pp_elem
 
 let pp_token ff = function
@@ -147,7 +148,7 @@ let pp_deriv ff deriv =
   | DefPrim (i, j, c) -> fprintf ff "defpr %d %d %s" i j c
   | Inst (i, js, k) ->
       let n = length js in
-      fprintf ff "inst %d %d %a %d" i n (pp_print_list ~pp_sep:pp_print_space pp_print_int) js k
+      fprintf ff "inst %d %d %a %d" i n (pp_print_list ~pp_sep:pp_space pp_print_int) js k
 
 let print_derivs ff derivs =
   Vector.iteri (fun line deriv -> fprintf ff "%d %a\n" line pp_deriv deriv) derivs;
