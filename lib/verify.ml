@@ -294,22 +294,22 @@ let verify_deriv book deriv =
       assert_new_var ctx x;
       (defs, (x, a) :: ctx, Var x, a)
   | Weak (i, j, x) ->
-      let (defs1, ctx1, a, b) = Vector.get book i in
-      let (defs2, ctx2, c, s) = Vector.get book j in
-      assert_same_definitions defs1 defs2;
-      assert_alpha_equiv_context ctx1 ctx2;
+      let (defs, ctx, a, b) = Vector.get book i in
+      let (defs', ctx', c, s) = Vector.get book j in
+      assert_same_definitions defs defs';
+      assert_alpha_equiv_context ctx ctx';
       assert_sort s;
-      assert_new_var ctx1 x;
-      (defs1, (x, c) :: ctx1, a, b)
+      assert_new_var ctx x;
+      (defs, (x, c) :: ctx, a, b)
   | Form (i, j) ->
       (match (Vector.get book i, Vector.get book j) with
-      | (defs1, ctx1, a1, s1), (defs2, (x, a2) :: ctx2, b, s2) ->
-          assert_same_definitions defs1 defs2;
-          assert_alpha_equiv_context ctx1 ctx2;
-          assert_alpha_equiv a1 a2;
+      | (defs, ctx, a, s1), (defs', (x, a') :: ctx', b, s2) ->
+          assert_same_definitions defs defs';
+          assert_alpha_equiv_context ctx ctx';
+          assert_alpha_equiv a a';
           assert_sort s1;
           assert_sort s2;
-          (defs1, ctx1, Pi (x, a1, b), s2)
+          (defs, ctx, Pi (x, a, b), s2)
       | _, _ -> raise @@ DerivError EmptyContext)
   | App (i, j) ->
       (match (Vector.get book i, Vector.get book j) with
