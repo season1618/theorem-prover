@@ -3,6 +3,41 @@ open Util
 
 open List
 
+(* let rec subtract xs a =
+  match xs with
+  | [] -> []
+  | x :: xs ->
+      if x = a then
+        subtract xs a
+      else
+        x :: subtract xs a *)
+
+let rec free_bind_var set term =
+  match term with
+  | Type | Kind -> ()
+  | Const (_, args) -> iter (free_bind_var set) args
+  | Var x -> Hashset.add set x
+  | App (t1, t2) ->
+      free_bind_var set t1;
+      free_bind_var set t2
+  | Lam (x, a, t) | Pi (x, a, t) ->
+      Hashset.add set x;
+      free_bind_var set a;
+      free_bind_var set t
+let free_bind_var terms =
+  let set = Hashset.create 0 in
+  iter (free_bind_var set) terms;
+  set
+
+let rec fresh_char set c =
+  if not @@ Hashset.mem set (Char.escaped c) then
+    c
+  else if c = 'z' then
+    raise @@ Failure "no valid symbol"
+  else
+    fresh_char set (Char.chr (Char.code c + 1))
+let fresh_char set = fresh_char set 'a'
+
 (* y may be either a free variable or a binding variable in t *)
 let rec rename t x y =
   match t with
@@ -72,6 +107,28 @@ let rec subst_simul t substs =
 let subst_list t xs us =
   fold_left2 subst t xs us
 
+let rec subst_symb t substs =
+  match t with
+  | Type -> Type
+  | Kind -> Kind
+  | Const (name, args) -> Const (name, map (fun t -> subst_symb t substs) args)
+  | Var x' ->
+      let rec subst_simul_var substs =
+        match substs with
+        | [] -> t
+        | (x, u) :: _ when x' = x -> u
+        | _ :: substs -> subst_simul_var substs
+      in subst_simul_var substs
+  | App (t1, t2) -> App (subst_symb t1 substs, subst_symb t2 substs)
+  | Lam (x', a, t) ->
+      let vars = free_bind_var (t :: map (fun (_, u) -> u) substs) in
+      let x'' = Char.escaped @@ fresh_char vars in
+      Lam (x'', subst_symb a substs, subst_symb (rename_fresh t x' x'') substs)
+  | Pi  (x', a, t) ->
+      let vars = free_bind_var (t :: map (fun (_, u) -> u) substs) in
+      let x'' = Char.escaped @@ fresh_char vars in
+      Pi  (x'', subst_symb a substs, subst_symb (rename_fresh t x' x'') substs)
+
 let rec alpha_equiv t1 t2 =
   match (t1, t2) with
   | (Type, Type) | (Kind, Kind) -> true
@@ -117,4 +174,28 @@ let rec normalize defs term =
       | _ -> App (t1, t2))
   | Lam (x, a, b) -> Lam (x, normalize defs a, normalize defs b)
   | Pi  (x, a, b) -> Pi  (x, normalize defs a, normalize defs b)
+  | _ -> term
+
+let rec normalize_symb defs term =
+  match term with
+  | Const (name, args) ->
+      let (ctx, body, _) = find_const defs name in
+      let params = rev ctx in
+      let args = map (normalize_symb defs) args in
+      if length params = length args then
+        match body with
+        | Some body ->
+            let substs = map2 (fun (x, _) u -> (x, u)) params args in
+            normalize_symb defs (subst_symb body substs)
+        | None -> Const (name, args)
+      else
+        raise @@ DerivError (NotSameLengthParamArg (name, ctx, args))
+  | App (t1, t2) ->
+      let t1 = normalize_symb defs t1 in
+      let t2 = normalize_symb defs t2 in
+      (match t1 with
+      | Lam (x, _, b) -> normalize_symb defs (subst_symb b [(x, t2)])
+      | _ -> App (t1, t2))
+  | Lam (x, a, b) -> Lam (x, normalize_symb defs a, normalize_symb defs b)
+  | Pi  (x, a, b) -> Pi  (x, normalize_symb defs a, normalize_symb defs b)
   | _ -> term

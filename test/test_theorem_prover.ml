@@ -18,6 +18,7 @@ let () =
   printf "%a [x := a] = %a\n" pp_term term1 pp_term (rename_fresh term1 "x" "a");
   printf "%a [x := a] = %a\n" pp_term term2 pp_term (rename_fresh term2 "x" "a");
   printf "%a [x := %a] = %a\n" pp_term term3 pp_term term4 pp_term (subst term3 "x" term4);
+  printf "%a [x := %a] = %a\n" pp_term term3 pp_term term4 pp_term (subst_symb term3 [("x", term4)]);
   printf "%b\n" (alpha_equiv term1 term2);
 
   let defs = [([("B", Type); ("A", Type)], "imply", Some (Pi ("x", Var "A", Var "B")), Type)] in
@@ -25,8 +26,10 @@ let () =
   let (term2, _) = parse "%($x:(*).(imply[(%($y:(*).(x))(y)),(x)]))($w:(*).(w))" in
   printf "%a ->\n" pp_term term1;
   printf "  %a\n" pp_term (normalize [] term1);
+  printf "  %a\n" pp_term (normalize_symb [] term1);
   printf "  %a\n" pp_term (normalize_by_eval [] term1);
 
   printf "%a ->\n" pp_term term2;
   printf "  %a\n" pp_term (normalize defs term2);
+  printf "  %a\n" pp_term (normalize_symb defs term2);
   printf "  %a\n" pp_term (normalize_by_eval defs term2);
