@@ -3,15 +3,6 @@ open Util
 
 open List
 
-(* let rec subtract xs a =
-  match xs with
-  | [] -> []
-  | x :: xs ->
-      if x = a then
-        subtract xs a
-      else
-        x :: subtract xs a *)
-
 let rec free_bind_var set term =
   match term with
   | Type | Kind -> ()
@@ -70,6 +61,12 @@ let rec rename_fresh t x y =
       if x' = x then Pi (x', rename_fresh a x y, t)
       else Pi (x', rename_fresh a x y, rename_fresh t x y)
 
+let rec subst_var x substs : term =
+  match substs with
+  | [] -> Var x
+  | (x', u) :: _ when x' = x -> u
+  | _ :: substs -> subst_var x substs
+
 let rec subst t x u =
   match t with
   | Type -> Type
@@ -89,13 +86,7 @@ let rec subst_simul t substs =
   | Type -> Type
   | Kind -> Kind
   | Const (name, args) -> Const (name, map (fun t -> subst_simul t substs) args)
-  | Var x' ->
-      let rec subst_simul_var substs =
-        match substs with
-        | [] -> t
-        | (x, u) :: _ when x' = x -> u
-        | _ :: substs -> subst_simul_var substs
-      in subst_simul_var substs
+  | Var x -> subst_var x substs
   | App (t1, t2) -> App (subst_simul t1 substs, subst_simul t2 substs)
   | Lam (x', a, t) ->
       let x'' = fresh_var () in
@@ -104,21 +95,12 @@ let rec subst_simul t substs =
       let x'' = fresh_var () in
       Pi (x'', subst_simul a substs, subst_simul (rename_fresh t x' x'') substs)
 
-let subst_list t xs us =
-  fold_left2 subst t xs us
-
 let rec subst_symb t substs =
   match t with
   | Type -> Type
   | Kind -> Kind
   | Const (name, args) -> Const (name, map (fun t -> subst_symb t substs) args)
-  | Var x' ->
-      let rec subst_simul_var substs =
-        match substs with
-        | [] -> t
-        | (x, u) :: _ when x' = x -> u
-        | _ :: substs -> subst_simul_var substs
-      in subst_simul_var substs
+  | Var x -> subst_var x substs
   | App (t1, t2) -> App (subst_symb t1 substs, subst_symb t2 substs)
   | Lam (x', a, t) ->
       let vars = free_bind_var (t :: map (fun (_, u) -> u) substs) in
