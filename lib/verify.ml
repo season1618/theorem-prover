@@ -47,6 +47,13 @@ let assert_alpha_equiv_definitions defs1 defs2 =
   else
     raise @@ DerivError (NotSameLengthDefinitions (defs1, defs2))
 
+let rec assert_new_var ctx name =
+  match ctx with
+  | [] -> ()
+  | (name', _) :: _ when name' = name ->
+      raise @@ DerivError (VarAlreadyDefined (ctx, name))
+  | _ :: ctx -> assert_new_var ctx name
+
 let assert_same_definition def1 def2 =
   let (_, name1, _, _) = def1 in
   let (_, name2, _, _) = def2 in
@@ -284,6 +291,7 @@ let verify_deriv book deriv =
   | Var (i, x) ->
       let (defs, ctx, a, s) = Vector.get book i in
       assert_sort s;
+      assert_new_var ctx x;
       (defs, (x, a) :: ctx, Var x, a)
   | Weak (i, j, x) ->
       let (defs1, ctx1, a, b) = Vector.get book i in
@@ -291,6 +299,7 @@ let verify_deriv book deriv =
       assert_same_definitions defs1 defs2;
       assert_alpha_equiv_context ctx1 ctx2;
       assert_sort s;
+      assert_new_var ctx1 x;
       (defs1, (x, c) :: ctx1, a, b)
   | Form (i, j) ->
       (match (Vector.get book i, Vector.get book j) with

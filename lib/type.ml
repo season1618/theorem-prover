@@ -58,6 +58,7 @@ type deriv_error
   | NotSameLengthDefinitions of definitions * definitions
   | NotSameLengthParamArg of string * context * term list
   | ConstAlreadyDefined of definition * string
+  | VarAlreadyDefined of context * string
   | DoNotMatchDefinition of definition * definition
   | UndefinedConst of string
   | NotTypeKind of term * term
