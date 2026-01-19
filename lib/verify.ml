@@ -261,8 +261,9 @@ and derive_term book cache defs ctx term =
       let def_idx = Option.get @@ find_index (fun (_, name', _, _) -> name' = name) (rev defs) in
       let deriv0 = derive_term_memo book cache defs ctx Type in
       let (params, param_types) = split (rev ctx2) in
-      let types = map (fun param_type -> subst_symb used param_type (combine params args)) param_types in
-      let derivs = map2 (fun arg typ -> derive_conv book cache (defs, ctx, arg, typ)) args types in
+      let substs = combine params args in
+      let arg_types = map (fun param_type -> subst_symb used param_type substs) param_types in
+      let derivs = map2 (fun arg typ -> derive_conv book cache (defs, ctx, arg, typ)) args arg_types in
       Inst (deriv0, derivs, def_idx)
   | Var x -> derive_var book cache defs ctx x
   | App (term1, term2) ->
