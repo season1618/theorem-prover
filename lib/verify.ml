@@ -7,6 +7,15 @@ open Parser
 open List
 open Format
 
+let rec find_opt vec p i =
+  if i = Vector.length vec then
+    None
+  else if p @@ Vector.get vec i then
+    Some (Vector.get vec i)
+  else
+    find_opt vec p (i + 1)
+let find_opt vec p = find_opt vec p 0
+
 let assert_sort t =
   match t with
   | Type | Kind -> ()
@@ -203,7 +212,7 @@ let rec derive_type_noctx book cache defs =
         (match term with
         | Some term ->
             let (deriv1, _) = derive_term_memo book cache (defs, [], Type) in
-            let deriv2 = derive_term_type book cache (defs, ctx, term, typ) in
+            let deriv2 = derive_term_type_memo book cache (defs, ctx, term, typ) in
             Def (deriv1, deriv2, name)
         | None ->
             let (deriv1, _) = derive_term_memo book cache (defs, [], Type) in
@@ -250,7 +259,7 @@ and derive_term book cache (defs, ctx, term) =
       let res_type = subst_symb used ret_type substs in
 
       let (deriv0, _) = derive_term_memo book cache (defs, ctx, Type) in
-      let derivs = map2 (fun arg typ -> derive_term_type book cache (defs, ctx, arg, typ)) args arg_types in
+      let derivs = map2 (fun arg typ -> derive_term_type_memo book cache (defs, ctx, arg, typ)) args arg_types in
       (Inst (deriv0, derivs, def_idx), res_type)
   | Var x -> derive_var book cache (defs, ctx, x)
   | App (t1, t2) ->
@@ -281,22 +290,39 @@ and derive_term_norm book cache (defs, ctx, term) =
     let (deriv2, _) = derive_term_memo book cache (defs, ctx, typ) in
     (reg_deriv book (Conv (deriv1, deriv2)), typ)
 
-and derive_term_type book cache (defs, ctx, term, typ) : int =
+and derive_term_type book cache (defs, ctx, term, typ) : deriv =
   if typ = Kind then
-    fst @@ derive_term_memo book cache (defs, ctx, term)
+    fst @@ derive_term book cache (defs, ctx, term)
   else
     let (deriv1, _) = derive_term_memo book cache (defs, ctx, term) in
     let (deriv2, _) = derive_term_memo book cache (defs, ctx, typ) in
-    reg_deriv book (Conv (deriv1, deriv2))
+    Conv (deriv1, deriv2)
 
 and derive_term_memo book cache (defs, ctx, term) =
   match Hashtbl.find_opt cache (defs, ctx, term) with
-  | Some (id, typ) -> (id, typ)
+  | Some ((id, typ), _) -> (id, typ)
   | None ->
       let (deriv, typ) = derive_term book cache (defs, ctx, term) in
       let id = reg_deriv book deriv in
-      Hashtbl.add cache (defs, ctx, term) (id, typ);
+      Hashtbl.add cache (defs, ctx, term) ((id, typ), Vector.make 1 ~dummy:(id, typ));
       (id, typ)
+
+and derive_term_type_memo book cache ((defs, ctx, term, typ) as judge) =
+  match Hashtbl.find_opt cache (defs, ctx, term) with
+  | Some (_, vec) ->
+      (match find_opt vec (fun (_, typ') -> alpha_equiv typ typ') with
+      | Some (id, _) -> id
+      | None ->
+          let deriv = derive_term_type book cache judge in
+          let id = reg_deriv book deriv in
+          Vector.push vec (id, typ);
+          id
+      )
+  | None ->
+      let deriv = derive_term_type book cache judge in
+      let id = reg_deriv book deriv in
+      Hashtbl.add cache (defs, ctx, term) ((id, typ), Vector.make 1 ~dummy:(id, typ));
+      id
 
 and gen_derivs def_list =
   let book = Vector.create ~dummy:Sort in
