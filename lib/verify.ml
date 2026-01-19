@@ -202,12 +202,12 @@ let rec derive_type_noctx book cache defs =
       try
         (match term with
         | Some term ->
-            let deriv1 = derive_term_memo book cache (defs, [], Type) in
+            let (deriv1, _) = derive_term_memo book cache (defs, [], Type) in
             let deriv2 = derive_term_type book cache (defs, ctx, term, typ) in
             Def (deriv1, deriv2, name)
         | None ->
-            let deriv1 = derive_term_memo book cache (defs, [], Type) in
-            let deriv2 = derive_term_memo book cache (defs, ctx, typ) in
+            let (deriv1, _) = derive_term_memo book cache (defs, [], Type) in
+            let (deriv2, _) = derive_term_memo book cache (defs, ctx, typ) in
             DefPrim (deriv1, deriv2, name)
         )
       with
@@ -220,51 +220,56 @@ and derive_type book cache (defs, ctx) =
   match ctx with
   | [] -> derive_type_noctx book cache defs
   | (x, a) :: ctx ->
-      let deriv1 = derive_term_memo book cache (defs, ctx, Type) in
-      let deriv2 = derive_term_memo book cache (defs, ctx, a) in
+      let (deriv1, _) = derive_term_memo book cache (defs, ctx, Type) in
+      let (deriv2, _) = derive_term_memo book cache (defs, ctx, a) in
       Weak (deriv1, deriv2, x)
 
 and derive_var book cache (defs, ctx, x) =
   match ctx with
   | [] -> raise @@ TypeError (VarUndef x)
   | (x', a) :: ctx when x' = x ->
-      let deriv = derive_term_memo book cache (defs, ctx, a) in
-      Var (deriv, x)
+      let (deriv, _) = derive_term_memo book cache (defs, ctx, a) in
+      (Var (deriv, x), a)
   | (y, b) :: ctx ->
-      let deriv1 = derive_term_memo book cache (defs, ctx, Var x) in
-      let deriv2 = derive_term_memo book cache (defs, ctx, b) in
-      Weak (deriv1, deriv2, y)
+      let (deriv1, a) = derive_term_memo book cache (defs, ctx, Var x) in
+      let (deriv2, _) = derive_term_memo book cache (defs, ctx, b) in
+      (Weak (deriv1, deriv2, y), a)
 
 and derive_term book cache (defs, ctx, term) =
   let used = fst (split ctx) in
   match term with
-  | Type -> derive_type book cache (defs, ctx)
+  | Type -> (derive_type book cache (defs, ctx), Kind)
   | Kind -> raise @@ TypeError KindHasNoType
   | Const (name, args) ->
-      let (ctx2, _, _) = find_const defs name in
-      let def_idx = Option.get @@ find_index (fun (_, name', _, _) -> name' = name) (rev defs) in
-      let deriv0 = derive_term_memo book cache (defs, ctx, Type) in
+      let (ctx2, _, ret_type) = find_const defs name in
       let (params, param_types) = split (rev ctx2) in
+      let def_idx = Option.get @@ find_index (fun (_, name', _, _) -> name' = name) (rev defs) in
+
       let substs = combine params args in
       let arg_types = map (fun param_type -> subst_symb used param_type substs) param_types in
+      let res_type = subst_symb used ret_type substs in
+
+      let (deriv0, _) = derive_term_memo book cache (defs, ctx, Type) in
       let derivs = map2 (fun arg typ -> derive_term_type book cache (defs, ctx, arg, typ)) args arg_types in
-      Inst (deriv0, derivs, def_idx)
+      (Inst (deriv0, derivs, def_idx), res_type)
   | Var x -> derive_var book cache (defs, ctx, x)
-  | App (term1, term2) ->
-      let deriv1 = derive_term_norm book cache (defs, ctx, term1) in
-      let deriv2 = derive_term_norm book cache (defs, ctx, term2) in
-      App (deriv1, deriv2)
+  | App (t1, t2) ->
+      let (deriv1, typ) = derive_term_norm book cache (defs, ctx, t1) in
+      let (deriv2, _) = derive_term_norm book cache (defs, ctx, t2) in
+      (match typ with
+      | Pi (x, _, b) -> (App (deriv1, deriv2), subst_symb used b [(x, t2)])
+      | _ -> raise @@ TypeError (NotPi typ)
+      )
   | Lam (x, a, t) ->
       let (x, t) = if mem x (fst (split ctx)) then fresh_term ctx (x, t) else (x, t) in
-      let b = infer_type defs ((x, a) :: ctx) t in
-      let deriv1 = derive_term_memo book cache (defs, (x, a) :: ctx, t) in
-      let deriv2 = derive_term_memo book cache (defs, ctx, Pi (x, a, b)) in
-      Abs (deriv1, deriv2)
+      let (deriv1, b) = derive_term_memo book cache (defs, (x, a) :: ctx, t) in
+      let (deriv2, _) = derive_term_memo book cache (defs, ctx, Pi (x, a, b)) in
+      (Abs (deriv1, deriv2), Pi (x, a, b))
   | Pi (x, a, b) ->
       let (x, b) = if mem x (fst (split ctx)) then fresh_term ctx (x, b) else (x, b) in
-      let deriv1 = derive_term_norm book cache (defs, ctx, a) in
-      let deriv2 = derive_term_norm book cache (defs, ((x, a) :: ctx), b) in
-      Form (deriv1, deriv2)
+      let (deriv1, _) = derive_term_norm book cache (defs, ctx, a) in
+      let (deriv2, s) = derive_term_norm book cache (defs, ((x, a) :: ctx), b) in
+      (Form (deriv1, deriv2), s)
 
 and derive_term_norm book cache (defs, ctx, term) =
   let used = fst (split ctx) in
@@ -272,26 +277,26 @@ and derive_term_norm book cache (defs, ctx, term) =
   if typ = Kind then
     derive_term_memo book cache (defs, ctx, term)
   else
-    let deriv1 = derive_term_memo book cache (defs, ctx, term) in
-    let deriv2 = derive_term_memo book cache (defs, ctx, typ) in
-    reg_deriv book (Conv (deriv1, deriv2))
+    let (deriv1, _) = derive_term_memo book cache (defs, ctx, term) in
+    let (deriv2, _) = derive_term_memo book cache (defs, ctx, typ) in
+    (reg_deriv book (Conv (deriv1, deriv2)), typ)
 
-and derive_term_type book cache (defs, ctx, term, typ) =
+and derive_term_type book cache (defs, ctx, term, typ) : int =
   if typ = Kind then
-    derive_term_memo book cache (defs, ctx, term)
+    fst @@ derive_term_memo book cache (defs, ctx, term)
   else
-    let deriv1 = derive_term_memo book cache (defs, ctx, term) in
-    let deriv2 = derive_term_memo book cache (defs, ctx, typ) in
+    let (deriv1, _) = derive_term_memo book cache (defs, ctx, term) in
+    let (deriv2, _) = derive_term_memo book cache (defs, ctx, typ) in
     reg_deriv book (Conv (deriv1, deriv2))
 
 and derive_term_memo book cache (defs, ctx, term) =
   match Hashtbl.find_opt cache (defs, ctx, term) with
-  | Some id -> id
+  | Some (id, typ) -> (id, typ)
   | None ->
-      let deriv = derive_term book cache (defs, ctx, term) in
+      let (deriv, typ) = derive_term book cache (defs, ctx, term) in
       let id = reg_deriv book deriv in
-      Hashtbl.add cache (defs, ctx, term) id;
-      id
+      Hashtbl.add cache (defs, ctx, term) (id, typ);
+      (id, typ)
 
 and gen_derivs def_list =
   let book = Vector.create ~dummy:Sort in
