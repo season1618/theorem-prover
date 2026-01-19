@@ -204,6 +204,7 @@ let reg_deriv book deriv =
   Vector.push book deriv;
   Vector.length book - 1
 
+(* Δ ; ∅ |- * : □ *)
 let rec derive_type_noctx book cache defs =
   match defs with
   | [] -> Sort
@@ -225,6 +226,7 @@ let rec derive_type_noctx book cache defs =
           printf "    %a\n" pp_def def;
           exit 0
 
+(* Δ ; Γ |- * : □ *)
 and derive_type book cache (defs, ctx) =
   match ctx with
   | [] -> derive_type_noctx book cache defs
@@ -233,6 +235,7 @@ and derive_type book cache (defs, ctx) =
       let (deriv2, _) = derive_term_memo book cache (defs, ctx, a) in
       Weak (deriv1, deriv2, x)
 
+(* Δ ; Γ |- x : T where T is any *)
 and derive_var book cache (defs, ctx, x) =
   match ctx with
   | [] -> raise @@ TypeError (VarUndef x)
@@ -244,6 +247,7 @@ and derive_var book cache (defs, ctx, x) =
       let (deriv2, _) = derive_term_memo book cache (defs, ctx, b) in
       (Weak (deriv1, deriv2, y), a)
 
+(* Δ ; Γ |- t : T where T is any *)
 and derive_term book cache (defs, ctx, term) =
   let used = fst (split ctx) in
   match term with
@@ -280,17 +284,14 @@ and derive_term book cache (defs, ctx, term) =
       let (deriv2, s) = derive_term_norm book cache (defs, ((x, a) :: ctx), b) in
       (Form (deriv1, deriv2), s)
 
+(* Δ ; Γ |- t : T where T is βδ-normal form *)
 and derive_term_norm book cache (defs, ctx, term) =
   let used = fst (split ctx) in
   let typ = normalize_symb used defs (infer_type defs ctx term) in
-  if typ = Kind then
-    derive_term_memo book cache (defs, ctx, term)
-  else
-    let (deriv1, _) = derive_term_memo book cache (defs, ctx, term) in
-    let (deriv2, _) = derive_term_memo book cache (defs, ctx, typ) in
-    (reg_deriv book (Conv (deriv1, deriv2)), typ)
+  (derive_term_type_memo book cache (defs, ctx, term, typ), typ)
 
-and derive_term_type book cache (defs, ctx, term, typ) : deriv =
+(* Δ ; Γ |- t : T *)
+and derive_term_type book cache (defs, ctx, term, typ) =
   if typ = Kind then
     fst @@ derive_term book cache (defs, ctx, term)
   else
