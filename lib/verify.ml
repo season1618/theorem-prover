@@ -227,14 +227,16 @@ and derive_type book cache defs ctx =
       let deriv2 = derive_term_memo book cache defs ctx a in
       Weak (deriv1, deriv2, x)
 
-and derive_var book cache defs ctx name =
+and derive_var book cache defs ctx x =
   match ctx with
-  | [] -> raise @@ TypeError (VarUndef name)
-  | (name', typ) :: ctx ->
-      if name' = name then
-        Var (derive_term_memo book cache defs ctx typ, name)
-      else
-        Weak (derive_term_memo book cache defs ctx (Var name), derive_term_memo book cache defs ctx typ, name')
+  | [] -> raise @@ TypeError (VarUndef x)
+  | (x', a) :: ctx when x' = x ->
+      let deriv = derive_term_memo book cache defs ctx a in
+      Var (deriv, x)
+  | (y, b) :: ctx ->
+      let deriv1 = derive_term_memo book cache defs ctx (Var x) in
+      let deriv2 = derive_term_memo book cache defs ctx b in
+      Weak (deriv1, deriv2, y)
 
 and derive_term book cache defs ctx term =
   let used = fst (split ctx) in
