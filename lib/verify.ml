@@ -136,15 +136,17 @@ let rec infer_type defs ctx term =
   | Kind -> raise @@ TypeError KindHasNoType
   | Const (name, args) ->
       let (ctx, _, typ) = find_const defs name in
-      subst_symb typ (map2 (fun (x, _) arg -> (x, arg)) (rev ctx) args)
+      let used = fst (split ctx) in
+      subst_symb used typ (map2 (fun (x, _) arg -> (x, arg)) (rev ctx) args)
   | Var x -> find_var ctx x
   | App (term1, term2) ->
-      let type1 = normalize_symb defs (infer_type defs ctx term1) in
+      let used = fst (split ctx) in
+      let type1 = normalize_symb used defs (infer_type defs ctx term1) in
       let type2 = infer_type defs ctx term2 in
       (match (type1, type2) with
       | (Pi (x, a, b), a') ->
           if alpha_beta_delta_equiv defs a a' then
-            subst_symb b [(x, term2)]
+            subst_symb used b [(x, term2)]
           else
             raise @@ TypeError (TypeMismatchApp (term1, type1, term2, type2, a, a'));
       | (_, _) -> raise @@ TypeError (NotPi type1)
@@ -184,6 +186,11 @@ let rec check_definitions def_list defs =
 let check_definitions def_list =
   check_definitions def_list []
 
+let fresh_term ctx (x, t) =
+  let x' = fresh_char (fst (split ctx)) (free_bind_var [t]) in
+  let t' = rename_fresh t x x' in
+  (x', t')
+
 let reg_deriv book deriv =
   Vector.push book deriv;
   Vector.length book - 1
@@ -194,7 +201,8 @@ let rec derive_conv book cache (defs, ctx, term, typ) =
   reg_deriv book (Conv (deriv1, deriv2))
 
 and derive_conv_norm book cache (defs, ctx, term) =
-  let typ = normalize_symb defs (infer_type defs ctx term) in
+  let used = fst (split ctx) in
+  let typ = normalize_symb used defs (infer_type defs ctx term) in
   if typ = Kind then
     derive_term_memo book cache defs ctx term
   else
@@ -244,6 +252,7 @@ and derive_var book cache defs ctx name =
         Weak (derive_term_memo book cache defs ctx (Var name), derive_term_memo book cache defs ctx typ, name')
 
 and derive_term book cache defs ctx term =
+  let used = fst (split ctx) in
   match term with
   | Type -> derive_type book cache defs ctx
   | Kind -> raise @@ TypeError KindHasNoType
@@ -252,7 +261,7 @@ and derive_term book cache defs ctx term =
       let def_idx = Option.get @@ find_index (fun (_, name', _, _) -> name' = name) (rev defs) in
       let deriv0 = derive_term_memo book cache defs ctx Type in
       let (params, param_types) = split (rev ctx2) in
-      let types = map (fun param_type -> subst_symb param_type (combine params args)) param_types in
+      let types = map (fun param_type -> subst_symb used param_type (combine params args)) param_types in
       let derivs = map2 (fun arg typ -> derive_conv book cache (defs, ctx, arg, typ)) args types in
       Inst (deriv0, derivs, def_idx)
   | Var x -> derive_var book cache defs ctx x
@@ -261,11 +270,13 @@ and derive_term book cache defs ctx term =
       let deriv2 = derive_conv_norm book cache (defs, ctx, term2) in
       App (deriv1, deriv2)
   | Lam (x, a, t) ->
+      let (x, t) = if mem x (fst (split ctx)) then fresh_term ctx (x, t) else (x, t) in
       let b = infer_type defs ((x, a) :: ctx) t in
       let deriv1 = derive_term_memo book cache defs ((x, a) :: ctx) t in
       let deriv2 = derive_term_memo book cache defs ctx (Pi (x, a, b)) in
       Abs (deriv1, deriv2)
   | Pi (x, a, b) ->
+      let (x, b) = if mem x (fst (split ctx)) then fresh_term ctx (x, b) else (x, b) in
       let deriv1 = derive_conv_norm book cache (defs, ctx, a) in
       let deriv2 = derive_conv_norm book cache (defs, ((x, a) :: ctx), b) in
       Form (deriv1, deriv2)

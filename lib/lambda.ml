@@ -20,14 +20,14 @@ let free_bind_var terms =
   iter (free_bind_var set) terms;
   set
 
-let rec fresh_char set c =
-  if not @@ Hashset.mem set (Char.escaped c) then
+let rec fresh_char used set c =
+  if not @@ Hashset.mem set (Char.escaped c) && not @@ mem (Char.escaped c) used then
     c
   else if c = 'z' then
     raise @@ Failure "no valid symbol"
   else
-    fresh_char set (Char.chr (Char.code c + 1))
-let fresh_char set = fresh_char set 'a'
+    fresh_char used set (Char.chr (Char.code c + 1))
+let fresh_char used set = Char.escaped @@ fresh_char used set 'a'
 
 (* y may be either a free variable or a binding variable in t *)
 let rec rename t x y =
@@ -95,21 +95,21 @@ let rec subst_simul t substs =
       let x'' = fresh_var () in
       Pi (x'', subst_simul a substs, subst_simul (rename_fresh t x' x'') substs)
 
-let rec subst_symb t substs =
+let rec subst_symb used t substs =
   match t with
   | Type -> Type
   | Kind -> Kind
-  | Const (name, args) -> Const (name, map (fun t -> subst_symb t substs) args)
+  | Const (name, args) -> Const (name, map (fun t -> subst_symb used t substs) args)
   | Var x -> subst_var x substs
-  | App (t1, t2) -> App (subst_symb t1 substs, subst_symb t2 substs)
+  | App (t1, t2) -> App (subst_symb used t1 substs, subst_symb used t2 substs)
   | Lam (x', a, t) ->
       let vars = free_bind_var (t :: concat_map (fun (x, u) -> [(Var x : term); u]) substs) in
-      let x'' = Char.escaped @@ fresh_char vars in
-      Lam (x'', subst_symb a substs, subst_symb (rename_fresh t x' x'') substs)
+      let x'' = fresh_char used vars in
+      Lam (x'', subst_symb used a substs, subst_symb (x'' :: used) (rename_fresh t x' x'') substs)
   | Pi  (x', a, t) ->
       let vars = free_bind_var (t :: concat_map (fun (x, u) -> [(Var x : term); u]) substs) in
-      let x'' = Char.escaped @@ fresh_char vars in
-      Pi  (x'', subst_symb a substs, subst_symb (rename_fresh t x' x'') substs)
+      let x'' = fresh_char used vars in
+      Pi  (x'', subst_symb used a substs, subst_symb (x'' :: used) (rename_fresh t x' x'') substs)
 
 let rec alpha_equiv t1 t2 =
   match (t1, t2) with
@@ -158,26 +158,26 @@ let rec normalize defs term =
   | Pi  (x, a, b) -> Pi  (x, normalize defs a, normalize defs b)
   | _ -> term
 
-let rec normalize_symb defs term =
+let rec normalize_symb used defs term =
   match term with
   | Const (name, args) ->
       let (ctx, body, _) = find_const defs name in
       let params = rev ctx in
-      let args = map (normalize_symb defs) args in
+      let args = map (normalize_symb used defs) args in
       if length params = length args then
         match body with
         | Some body ->
             let substs = map2 (fun (x, _) u -> (x, u)) params args in
-            normalize_symb defs (subst_symb body substs)
+            normalize_symb used defs (subst_symb used body substs)
         | None -> Const (name, args)
       else
         raise @@ DerivError (NotSameLengthParamArg (name, ctx, args))
   | App (t1, t2) ->
-      let t1 = normalize_symb defs t1 in
-      let t2 = normalize_symb defs t2 in
+      let t1 = normalize_symb used defs t1 in
+      let t2 = normalize_symb used defs t2 in
       (match t1 with
-      | Lam (x, _, b) -> normalize_symb defs (subst_symb b [(x, t2)])
+      | Lam (x, _, b) -> normalize_symb used defs (subst_symb used b [(x, t2)])
       | _ -> App (t1, t2))
-  | Lam (x, a, b) -> Lam (x, normalize_symb defs a, normalize_symb defs b)
-  | Pi  (x, a, b) -> Pi  (x, normalize_symb defs a, normalize_symb defs b)
+  | Lam (x, a, b) -> Lam (x, normalize_symb used defs a, normalize_symb (x :: used) defs b)
+  | Pi  (x, a, b) -> Pi  (x, normalize_symb used defs a, normalize_symb (x :: used) defs b)
   | _ -> term
