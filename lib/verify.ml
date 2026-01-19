@@ -203,10 +203,7 @@ let rec derive_type_noctx book cache defs =
         (match term with
         | Some term ->
             let deriv1 = derive_term_memo book cache defs [] Type in
-            let deriv2 = if infer_type defs ctx term = Kind then
-              derive_term_memo book cache defs ctx term
-            else
-              derive_term_type book cache (defs, ctx, term, typ) in
+            let deriv2 = derive_term_type book cache (defs, ctx, term, typ) in
             Def (deriv1, deriv2, name)
         | None ->
             let deriv1 = derive_term_memo book cache defs [] Type in
@@ -280,9 +277,12 @@ and derive_term_norm book cache (defs, ctx, term) =
     reg_deriv book (Conv (deriv1, deriv2))
 
 and derive_term_type book cache (defs, ctx, term, typ) =
-  let deriv1 = derive_term_memo book cache defs ctx term in
-  let deriv2 = derive_term_memo book cache defs ctx typ in
-  reg_deriv book (Conv (deriv1, deriv2))
+  if typ = Kind then
+    derive_term_memo book cache defs ctx term
+  else
+    let deriv1 = derive_term_memo book cache defs ctx term in
+    let deriv2 = derive_term_memo book cache defs ctx typ in
+    reg_deriv book (Conv (deriv1, deriv2))
 
 and derive_term_memo book cache defs ctx term =
   match Hashtbl.find_opt cache (defs, ctx, term) with
