@@ -212,11 +212,11 @@ let rec derive_type_noctx book cache defs =
       try
         (match term with
         | Some term ->
-            let (deriv1, _) = derive_term_memo book cache (defs, [], Type) in
+            let deriv1 = derive_term_type_memo book cache (defs, [], Type, Kind) in
             let deriv2 = derive_term_type_memo book cache (defs, ctx, term, typ) in
             Def (deriv1, deriv2, name)
         | None ->
-            let (deriv1, _) = derive_term_memo book cache (defs, [], Type) in
+            let deriv1 = derive_term_type_memo book cache (defs, [], Type, Kind) in
             let (deriv2, _) = derive_term_memo book cache (defs, ctx, typ) in
             DefPrim (deriv1, deriv2, name)
         )
@@ -231,7 +231,7 @@ and derive_type book cache (defs, ctx) =
   match ctx with
   | [] -> derive_type_noctx book cache defs
   | (x, a) :: ctx ->
-      let (deriv1, _) = derive_term_memo book cache (defs, ctx, Type) in
+      let deriv1 = derive_term_type_memo book cache (defs, ctx, Type, Kind) in
       let (deriv2, _) = derive_term_memo book cache (defs, ctx, a) in
       Weak (deriv1, deriv2, x)
 
@@ -262,7 +262,7 @@ and derive_term book cache (defs, ctx, term) =
       let arg_types = map (fun param_type -> subst_symb used param_type substs) param_types in
       let res_type = subst_symb used ret_type substs in
 
-      let (deriv0, _) = derive_term_memo book cache (defs, ctx, Type) in
+      let deriv0 = derive_term_type_memo book cache (defs, ctx, Type, Kind) in
       let derivs = map2 (fun arg typ -> derive_term_type_memo book cache (defs, ctx, arg, typ)) args arg_types in
       (Inst (deriv0, derivs, def_idx), res_type)
   | Var x -> derive_var book cache (defs, ctx, x)
@@ -332,7 +332,7 @@ and derive_term_type_memo book cache ((defs, ctx, term, typ) as judge) =
 and gen_derivs def_list =
   let book = Vector.create ~dummy:Sort in
   let cache = Hashtbl.create ~random:false 0 in
-  ignore @@ derive_term_memo book cache (rev def_list, [], Type);
+  ignore @@ derive_term_type_memo book cache (rev def_list, [], Type, Kind);
   book
 
 let verify_deriv book deriv =
