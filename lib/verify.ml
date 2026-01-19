@@ -295,9 +295,13 @@ and derive_term_type book cache (defs, ctx, term, typ) =
   if typ = Kind then
     fst @@ derive_term book cache (defs, ctx, term)
   else
-    let (deriv1, _) = derive_term_memo book cache (defs, ctx, term) in
-    let (deriv2, _) = derive_term_memo book cache (defs, ctx, typ) in
-    Conv (deriv1, deriv2)
+    let (deriv, typ') = derive_term book cache (defs, ctx, term) in
+    if alpha_equiv typ typ' then
+      deriv
+    else
+      let (deriv1, _) = derive_term_memo book cache (defs, ctx, term) in
+      let (deriv2, _) = derive_term_memo book cache (defs, ctx, typ) in
+      Conv (deriv1, deriv2)
 
 and derive_term_memo book cache (defs, ctx, term) =
   match Hashtbl.find_opt cache (defs, ctx, term) with
