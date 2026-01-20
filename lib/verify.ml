@@ -108,9 +108,9 @@ let rec read_defs file =
   | "" -> read_defs file
   | str -> raise @@ Failure str
 
-let rec read_derivs () =
-  let str = read_line () in
-  let line, list = match String.split_on_char ' ' str with
+let rec read_derivs file =
+  let str = input_line file in
+  let line, list = match Str.split (Str.regexp "[ ]+") str with
     | line :: list -> (line, list)
     | [] -> raise @@ Failure "empty" in
   let line = int_of_string line in
@@ -137,7 +137,7 @@ let rec read_derivs () =
         let js = init n (fun i -> int_of_string (nth ks i)) in
         Inst (i, js, k)
     | _ -> raise @@ Failure ("invalid rule : " ^ rule))
-    :: read_derivs ()
+    :: read_derivs file
 
 let rec infer_type defs ctx term =
   match term with
@@ -442,4 +442,5 @@ let verify_derivs derivs =
         print_deriv_error book deriv err;
         exit 0
   ) derivs;
+  printf "All verified\n";
   book

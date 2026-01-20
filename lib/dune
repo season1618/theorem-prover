@@ -1,3 +1,3 @@
 (library
  (name theorem_prover)
- (libraries vector hashset unix))
+ (libraries str vector hashset unix))
