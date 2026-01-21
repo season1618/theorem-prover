@@ -367,7 +367,7 @@ let verify_deriv book deriv =
           assert_same_definitions defs defs';
           assert_alpha_equiv_context ctx ctx';
           assert_alpha_equiv a a';
-          (defs, ctx, App (t1, t2), subst b x t2)
+          (defs, ctx, App (t1, t2), subst_by_eval b [(x, t2)])
       | (_, _, _, typ), _ -> raise @@ DerivError (NotPi typ))
   | Abs (i, j) ->
       (match (Vector.get book i, Vector.get book j) with
@@ -421,21 +421,21 @@ let verify_deriv book deriv =
         let (arg_terms, arg_types) = split args in
         let (param_vars, param_types) = split (rev ctx2) in
         iter2 (fun param_type arg_type ->
-          assert_alpha_equiv (subst_simul param_type (combine param_vars arg_terms)) arg_type
+          assert_alpha_equiv (subst_by_eval param_type (combine param_vars arg_terms)) arg_type
         ) param_types arg_types;
-        (defs, ctx, Const (name, arg_terms), subst_simul typ (combine param_vars arg_terms))
+        (defs, ctx, Const (name, arg_terms), subst_by_eval typ (combine param_vars arg_terms))
       else
         raise @@ DerivError (NotTypeKind (typ, kind))
 
 let verify_derivs derivs =
   let book = Vector.create ~dummy:([], [], Type, Kind) in
   iteri (fun i deriv ->
-    (* printf "%d\n" i; *)
     try
-      (* let time1 = Unix.gettimeofday () in *)
+      let time1 = Unix.gettimeofday () in
       Vector.push book (verify_deriv book deriv);
-      (* let time2 = Unix.gettimeofday () in *)
-      (* printf "%d %f\n" i (time2 -. time1); *)
+      let time2 = Unix.gettimeofday () in
+      printf "%d %f\n" i (time2 -. time1);
+      print_flush ();
     with
     | DerivError err ->
         printf "line %d\n" i;

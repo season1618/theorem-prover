@@ -111,6 +111,21 @@ let rec subst_symb used t substs =
       let x'' = fresh_char used vars in
       Pi  (x'', subst_symb used a substs, subst_symb (x'' :: used) (rename_fresh t x' x'') substs)
 
+let rec subst_by_eval env term =
+  match term with
+  | Type -> Type
+  | Kind -> Kind
+  | Const (name, args) -> Const (name, map (subst_by_eval env) args)
+  | Var x -> subst_var x env
+  | App (t1, t2) -> App (subst_by_eval env t1, subst_by_eval env t2)
+  | Lam (x, a, t) ->
+      let x' = fresh_var () in
+      Lam (x', subst_by_eval env a, subst_by_eval ((x, Var x') :: env) t)
+  | Pi  (x, a, t) ->
+      let x' = fresh_var () in
+      Pi (x', subst_by_eval env a, subst_by_eval ((x, Var x') :: env) t)
+let subst_by_eval term substs = subst_by_eval substs term
+
 let rec alpha_equiv t1 t2 =
   match (t1, t2) with
   | (Type, Type) | (Kind, Kind) -> true
