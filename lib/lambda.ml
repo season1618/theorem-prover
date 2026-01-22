@@ -149,6 +149,15 @@ let rec find_var ctx name =
   | (name', typ) :: _ when name' = name -> typ
   | _ :: ctx -> find_var ctx name
 
+let delta_reduce defs name args =
+  let (ctx, body, _) = find_const defs name in
+  let params = rev ctx in
+  match body with
+  | Some body ->
+      let substs = map2 (fun (x, _) u -> (x, u)) params args in
+      Some (subst_by_eval body substs)
+  | None -> None
+
 let rec normalize defs term =
   match term with
   | Const (name, args) ->

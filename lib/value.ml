@@ -104,26 +104,14 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
   | (App (Lam (x, _, u), v), Const (_, _)) ->
       alpha_beta_delta_equiv defs env1 env2 (subst_by_eval u [(x, v)]) t2
   | (Const (name, args) as t1, t2) ->
-      let (ctx, body, _) = find_const defs name in
-      let params = rev ctx in
-      (match body with
-      | Some body ->
-          let substs = map2 (fun (x, _) u -> (x, u)) params args in
-          let t1 = subst_by_eval body substs in
-          alpha_beta_delta_equiv defs env1 env2 t1 t2
-      | None ->
-          equal (eval defs env1 t1) (eval defs env2 t2)
+      (match delta_reduce defs name args with
+      | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+      | None -> equal (eval defs env1 t1) (eval defs env2 t2)
       )
   | (t1, (Const (name, args) as t2)) ->
-      let (ctx, body, _) = find_const defs name in
-      let params = rev ctx in
-      (match body with
-      | Some body ->
-          let substs = map2 (fun (x, _) u -> (x, u)) params args in
-          let t2 = subst_by_eval body substs in
-          alpha_beta_delta_equiv defs env1 env2 t1 t2
-      | None ->
-          equal (eval defs env1 t1) (eval defs env2 t2)
+      (match delta_reduce defs name args with
+      | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+      | None -> equal (eval defs env1 t1) (eval defs env2 t2)
       )
   | (App (_, _), _) | (_, App (_, _)) ->
       equal (eval defs env1 t1) (eval defs env2 t2)
