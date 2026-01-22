@@ -89,6 +89,20 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
         true
       else
         equal (eval defs env1 t1) (eval defs env2 t2)
+  | (Var x1, Var x2) -> find_var env1 x1 = find_var env2 x2
+  | (App (u1, v1), App (u2, v2)) ->
+      if alpha_beta_delta_equiv defs env1 env2 u1 u2 && alpha_beta_delta_equiv defs env1 env2 v1 v2 then
+        true
+      else
+        equal (eval defs env1 t1) (eval defs env2 t2)
+  | (Lam (x1, a1, t1), Lam (x2, a2, t2)) | (Pi (x1, a1, t1), Pi (x2, a2, t2)) ->
+      alpha_beta_delta_equiv defs env1 env2 a1 a2 &&
+      let x = Neut (Var (fresh_var ())) in
+      alpha_beta_delta_equiv defs ((x1, x) :: env1) ((x2, x) :: env2) t1 t2
+  | (Const (_, _), App (Lam (x, _, u), v)) ->
+      alpha_beta_delta_equiv defs env1 env2 t1 (subst_by_eval u [(x, v)])
+  | (App (Lam (x, _, u), v), Const (_, _)) ->
+      alpha_beta_delta_equiv defs env1 env2 (subst_by_eval u [(x, v)]) t2
   | (Const (name, args) as t1, t2) ->
       let (ctx, body, _) = find_const defs name in
       let params = rev ctx in
@@ -111,18 +125,8 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
       | None ->
           equal (eval defs env1 t1) (eval defs env2 t2)
       )
-  | (Var x1, Var x2) -> find_var env1 x1 = find_var env2 x2
-  | (App (u1, v1), App (u2, v2)) ->
-      if alpha_beta_delta_equiv defs env1 env2 u1 u2 && alpha_beta_delta_equiv defs env1 env2 v1 v2 then
-        true
-      else
-        equal (eval defs env1 t1) (eval defs env2 t2)
   | (App (_, _), _) | (_, App (_, _)) ->
       equal (eval defs env1 t1) (eval defs env2 t2)
-  | (Lam (x1, a1, t1), Lam (x2, a2, t2)) | (Pi (x1, a1, t1), Pi (x2, a2, t2)) ->
-      alpha_beta_delta_equiv defs env1 env2 a1 a2 &&
-      let x = Neut (Var (fresh_var ())) in
-      alpha_beta_delta_equiv defs ((x1, x) :: env1) ((x2, x) :: env2) t1 t2
   | (_, _) ->
       equal (eval defs env1 t1) (eval defs env2 t2)
 

@@ -432,8 +432,7 @@ let verify_derivs derivs =
   iteri (fun i deriv ->
     try
       Vector.push book (verify_deriv book deriv);
-      printf "%d\n" i;
-      print_flush ();
+      eprintf "%d\n" i;
     with
     | DerivError err ->
         printf "line %d\n" i;
