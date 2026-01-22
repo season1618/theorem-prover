@@ -431,10 +431,8 @@ let verify_derivs derivs =
   let book = Vector.create ~dummy:([], [], Type, Kind) in
   iteri (fun i deriv ->
     try
-      let time1 = Unix.gettimeofday () in
       Vector.push book (verify_deriv book deriv);
-      let time2 = Unix.gettimeofday () in
-      printf "%d %f\n" i (time2 -. time1);
+      printf "%d\n" i;
       print_flush ();
     with
     | DerivError err ->
