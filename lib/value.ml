@@ -134,25 +134,23 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
       alpha_beta_delta_equiv defs env1 env2 t1 (subst_by_eval u [(x, v)])
   | (App (Lam (x, _, u), v), _) ->
       alpha_beta_delta_equiv defs env1 env2 (subst_by_eval u [(x, v)]) t2
-  | (Const (name, args), App (Const(_, _), _)) when size t1 < size t2 ->
-      (match delta_reduce defs name args with
+  | (Const (_, _), App (_, _)) | (App (_, _), Const (_, _)) when size t1 < size t2 ->
+      (match reduce_head defs t1 with
       | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-      | None -> equal (eval defs env1 t1) (eval defs env2 t2)
+      | None ->
+          (match reduce_head defs t2 with
+          | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+          | None -> equal (eval defs env1 t1) (eval defs env2 t2)
+          )
       )
-  | (Const (_, _), App (Const (name, args), v)) ->
-      (match delta_reduce defs name args with
-      | Some u -> alpha_beta_delta_equiv defs env1 env2 t1 (App (u, v))
-      | None -> equal (eval defs env1 t1) (eval defs env2 t2)
-      )
-  | (App (Const(_, _), _), Const (name, args)) when size t1 > size t2 ->
-      (match delta_reduce defs name args with
+  | (Const (_, _), App (_, _)) | (App (_, _), Const (_, _)) ->
+      (match reduce_head defs t2 with
       | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-      | None -> equal (eval defs env1 t1) (eval defs env2 t2)
-      )
-  | (App (Const (name, args), v), Const (_, _)) ->
-      (match delta_reduce defs name args with
-      | Some u -> alpha_beta_delta_equiv defs env1 env2 (App (u, v)) t2
-      | None -> equal (eval defs env1 t1) (eval defs env2 t2)
+      | None ->
+          (match reduce_head defs t1 with
+          | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+          | None -> equal (eval defs env1 t1) (eval defs env2 t2)
+          )
       )
   | (Const (name, args) as t1, t2) ->
       (match delta_reduce defs name args with
