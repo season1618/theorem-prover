@@ -93,25 +93,6 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
         | (None, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
         | (None, None) -> false
         )
-  | (Const (name1, args1), Const (name2, args2)) ->
-      if size t1 < size t2 then
-        (match delta_reduce defs name1 args1 with
-        | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-        | None ->
-            (match delta_reduce defs name2 args2 with
-            | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-            | None -> false
-            )
-        )
-      else
-        (match delta_reduce defs name2 args2 with
-        | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-        | None ->
-            (match delta_reduce defs name1 args1 with
-            | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-            | None -> false
-            )
-        )
   | (Var x1, Var x2) -> find_var env1 x1 = find_var env2 x2
   | (App (u1, v1), App (u2, v2)) ->
       if alpha_beta_delta_equiv defs env1 env2 u1 u2 && alpha_beta_delta_equiv defs env1 env2 v1 v2 then
@@ -131,7 +112,7 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
       alpha_beta_delta_equiv defs env1 env2 t1 (subst_by_eval u [(x, v)])
   | (App (Lam (x, _, u), v), _) ->
       alpha_beta_delta_equiv defs env1 env2 (subst_by_eval u [(x, v)]) t2
-  | (Const (_, _), App (_, _)) | (App (_, _), Const (_, _)) when size t1 < size t2 ->
+  | (Const (_, _), Const (_, _)) | (Const (_, _), App (_, _)) | (App (_, _), Const (_, _)) when size t1 < size t2 ->
       (match reduce_head defs t1 with
       | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
       | None ->
@@ -140,7 +121,7 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
           | None -> false
           )
       )
-  | (Const (_, _), App (_, _)) | (App (_, _), Const (_, _)) ->
+  | (Const (_, _), Const (_, _)) | (Const (_, _), App (_, _)) | (App (_, _), Const (_, _)) ->
       (match reduce_head defs t2 with
       | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
       | None ->
