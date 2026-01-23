@@ -152,18 +152,16 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
           | None -> equal (eval defs env1 t1) (eval defs env2 t2)
           )
       )
-  | (Const (name, args) as t1, t2) ->
-      (match delta_reduce defs name args with
+  | (Const (_, _), _) | (App (_, _), _) ->
+      (match reduce_head defs t1 with
       | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
       | None -> equal (eval defs env1 t1) (eval defs env2 t2)
       )
-  | (t1, (Const (name, args) as t2)) ->
-      (match delta_reduce defs name args with
+  | (_, Const (_, _)) | (_, App (_, _)) ->
+      (match reduce_head defs t2 with
       | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
       | None -> equal (eval defs env1 t1) (eval defs env2 t2)
       )
-  | (App (_, _), _) | (_, App (_, _)) ->
-      equal (eval defs env1 t1) (eval defs env2 t2)
   | (_, _) ->
       equal (eval defs env1 t1) (eval defs env2 t2)
 
