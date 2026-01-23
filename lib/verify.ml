@@ -397,8 +397,6 @@ let verify_deriv book deriv =
           assert_same_definitions defs defs';
           assert_new_definition defs name;
           let def = (ctx2, name, Some term2, type2) in
-          (* printf "%a\n" pp_def def;
-          print_flush (); *)
           (def :: defs, ctx1, term1, type1)
       )
   | DefPrim (i, j, name) ->
@@ -408,8 +406,6 @@ let verify_deriv book deriv =
           assert_new_definition defs name;
           assert_sort s;
           let def = (ctx2, name, None, type2) in
-          (* printf "%a\n" pp_def def;
-          print_flush (); *)
           (def :: defs, ctx1, term1, type1)
       )
   | Inst (i, js, k) ->

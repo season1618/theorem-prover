@@ -81,9 +81,6 @@ let rec equal v1 v2 =
   | (_, _) -> false
 
 let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
-  Format.printf "%a\n" pp_term t1;
-  Format.printf "%a\n" pp_term t2;
-  Format.print_newline ();
   match (t1, t2) with
   | (Type, Type) | (Kind, Kind) -> true
   | (Const (name, args1), Const (name', args2)) when name = name' ->
@@ -94,7 +91,7 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
         | (Some t1, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
         | (Some t1, None) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
         | (None, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-        | (None, None) -> equal (eval defs env1 t1) (eval defs env2 t2)
+        | (None, None) -> false
         )
   | (Const (name1, args1), Const (name2, args2)) ->
       if size t1 < size t2 then
@@ -124,7 +121,7 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
         | (Some t1, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
         | (Some t1, None) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
         | (None, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-        | (None, None) -> equal (eval defs env1 t1) (eval defs env2 t2)
+        | (None, None) -> false
         )
   | (Lam (x1, a1, t1), Lam (x2, a2, t2)) | (Pi (x1, a1, t1), Pi (x2, a2, t2)) ->
       alpha_beta_delta_equiv defs env1 env2 a1 a2 &&
@@ -140,7 +137,7 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
       | None ->
           (match reduce_head defs t2 with
           | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-          | None -> equal (eval defs env1 t1) (eval defs env2 t2)
+          | None -> false
           )
       )
   | (Const (_, _), App (_, _)) | (App (_, _), Const (_, _)) ->
@@ -149,21 +146,20 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
       | None ->
           (match reduce_head defs t1 with
           | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-          | None -> equal (eval defs env1 t1) (eval defs env2 t2)
+          | None -> false
           )
       )
   | (Const (_, _), _) | (App (_, _), _) ->
       (match reduce_head defs t1 with
       | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-      | None -> equal (eval defs env1 t1) (eval defs env2 t2)
+      | None -> false
       )
   | (_, Const (_, _)) | (_, App (_, _)) ->
       (match reduce_head defs t2 with
       | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-      | None -> equal (eval defs env1 t1) (eval defs env2 t2)
+      | None -> false
       )
-  | (_, _) ->
-      equal (eval defs env1 t1) (eval defs env2 t2)
+  | (_, _) -> false
 
 let alpha_beta_delta_equiv defs t1 t2 =
   let time1 = Unix.gettimeofday () in
