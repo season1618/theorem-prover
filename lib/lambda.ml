@@ -158,6 +158,19 @@ let delta_reduce defs name args =
       Some (subst_by_eval body substs)
   | None -> None
 
+let rec reduce_head defs term =
+  match term with
+  | Const (name, args) -> delta_reduce defs name args
+  | App (Lam (x, _, b), t2) -> Some (subst_by_eval b [(x, t2)])
+  | App (t1, t2) ->
+      let t1 = reduce_head defs t1 in
+      (match t1 with
+      | Some (Lam (x, _, b)) -> Some (subst_by_eval b [(x, t2)])
+      | Some t1 -> Some (App (t1, t2))
+      | None -> None
+      )
+  | _ -> None
+
 let rec normalize defs term =
   match term with
   | Const (name, args) ->

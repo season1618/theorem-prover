@@ -91,12 +91,36 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
         true
       else
         equal (eval defs env1 t1) (eval defs env2 t2)
+  | (Const (name1, args1), Const (name2, args2)) ->
+      if size t1 < size t2 then
+        (match delta_reduce defs name1 args1 with
+        | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | None ->
+            (match delta_reduce defs name2 args2 with
+            | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+            | None -> false
+            )
+        )
+      else
+        (match delta_reduce defs name2 args2 with
+        | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | None ->
+            (match delta_reduce defs name1 args1 with
+            | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+            | None -> false
+            )
+        )
   | (Var x1, Var x2) -> find_var env1 x1 = find_var env2 x2
   | (App (u1, v1), App (u2, v2)) ->
       if alpha_beta_delta_equiv defs env1 env2 u1 u2 && alpha_beta_delta_equiv defs env1 env2 v1 v2 then
         true
       else
-        equal (eval defs env1 t1) (eval defs env2 t2)
+        (match (reduce_head defs t1, reduce_head defs t2) with
+        | (Some t1, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | (Some t1, None) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | (None, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | (None, None) -> equal (eval defs env1 t1) (eval defs env2 t2)
+        )
   | (Lam (x1, a1, t1), Lam (x2, a2, t2)) | (Pi (x1, a1, t1), Pi (x2, a2, t2)) ->
       alpha_beta_delta_equiv defs env1 env2 a1 a2 &&
       let x = Neut (Var (fresh_var ())) in
@@ -109,7 +133,7 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
       (match delta_reduce defs name args with
       | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
       | None -> equal (eval defs env1 t1) (eval defs env2 t2)
-      ) 
+      )
   | (Const (_, _), App (Const (name, args), v)) ->
       (match delta_reduce defs name args with
       | Some u -> alpha_beta_delta_equiv defs env1 env2 t1 (App (u, v))
