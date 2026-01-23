@@ -81,7 +81,9 @@ let rec equal v1 v2 =
   | (_, _) -> false
 
 let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
-  (* Format.printf "%a %a\n" pp_term t1 pp_term t2; *)
+  Format.printf "%a\n" pp_term t1;
+  Format.printf "%a\n" pp_term t2;
+  Format.print_newline ();
   match (t1, t2) with
   | (Type, Type) | (Kind, Kind) -> true
   | (Const (name, args1), Const (name', args2)) when name = name' ->
@@ -103,6 +105,26 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
       alpha_beta_delta_equiv defs env1 env2 t1 (subst_by_eval u [(x, v)])
   | (App (Lam (x, _, u), v), Const (_, _)) ->
       alpha_beta_delta_equiv defs env1 env2 (subst_by_eval u [(x, v)]) t2
+  | (Const (name, args), App (Const(_, _), _)) when size t1 < size t2 ->
+      (match delta_reduce defs name args with
+      | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+      | None -> equal (eval defs env1 t1) (eval defs env2 t2)
+      ) 
+  | (Const (_, _), App (Const (name, args), v)) ->
+      (match delta_reduce defs name args with
+      | Some u -> alpha_beta_delta_equiv defs env1 env2 t1 (App (u, v))
+      | None -> equal (eval defs env1 t1) (eval defs env2 t2)
+      )
+  | (App (Const(_, _), _), Const (name, args)) when size t1 > size t2 ->
+      (match delta_reduce defs name args with
+      | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+      | None -> equal (eval defs env1 t1) (eval defs env2 t2)
+      )
+  | (App (Const (name, args), v), Const (_, _)) ->
+      (match delta_reduce defs name args with
+      | Some u -> alpha_beta_delta_equiv defs env1 env2 (App (u, v)) t2
+      | None -> equal (eval defs env1 t1) (eval defs env2 t2)
+      )
   | (Const (name, args) as t1, t2) ->
       (match delta_reduce defs name args with
       | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
@@ -124,12 +146,8 @@ let alpha_beta_delta_equiv defs t1 t2 =
   let time2 = Unix.gettimeofday () in
 
   (if time2 -. time1 > 1.0 then
-    (* let t1' = normalize_by_eval defs t1 in
-    let t2' = normalize_by_eval defs t2 in *)
     (Format.printf "1 : %d\n" (size t1);
     Format.printf "2 : %d\n" (size t2);
-    (* Format.printf "1 : %d\n" (size t1');
-    Format.printf "2 : %d\n" (size t2'); *)
     Format.printf "1 : %a\n" pp_term t1;
     Format.printf "2 : %a\n" pp_term t2;
     Format.printf "%f\n" (time2 -. time1);
