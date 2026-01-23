@@ -90,7 +90,12 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
       if for_all2 (alpha_beta_delta_equiv defs env1 env2) args1 args2 then
         true
       else
-        equal (eval defs env1 t1) (eval defs env2 t2)
+        (match (reduce_head defs t1, reduce_head defs t2) with
+        | (Some t1, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | (Some t1, None) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | (None, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | (None, None) -> equal (eval defs env1 t1) (eval defs env2 t2)
+        )
   | (Const (name1, args1), Const (name2, args2)) ->
       if size t1 < size t2 then
         (match delta_reduce defs name1 args1 with
@@ -125,9 +130,9 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
       alpha_beta_delta_equiv defs env1 env2 a1 a2 &&
       let x = Neut (Var (fresh_var ())) in
       alpha_beta_delta_equiv defs ((x1, x) :: env1) ((x2, x) :: env2) t1 t2
-  | (Const (_, _), App (Lam (x, _, u), v)) ->
+  | (_, App (Lam (x, _, u), v)) ->
       alpha_beta_delta_equiv defs env1 env2 t1 (subst_by_eval u [(x, v)])
-  | (App (Lam (x, _, u), v), Const (_, _)) ->
+  | (App (Lam (x, _, u), v), _) ->
       alpha_beta_delta_equiv defs env1 env2 (subst_by_eval u [(x, v)]) t2
   | (Const (name, args), App (Const(_, _), _)) when size t1 < size t2 ->
       (match delta_reduce defs name args with
