@@ -68,33 +68,19 @@ let rec subst_var x substs : term =
   | (x', u) :: _ when x' = x -> u
   | _ :: substs -> subst_var x substs
 
-let rec subst t x u =
+let rec subst t substs =
   match t with
   | Type -> Type
   | Kind -> Kind
-  | Const (name, args) -> Const (name, map (fun t -> subst t x u) args)
-  | Var x' -> if x' = x then u else Var x'
-  | App (t1, t2) -> App (subst t1 x u, subst t2 x u)
-  | Lam (x', a, t) ->
-      let x'' = fresh_var () in
-      Lam (x'', subst a x u, subst (rename_fresh t x' x'') x u)
-  | Pi  (x', a, t) ->
-      let x'' = fresh_var () in
-      Pi (x'', subst a x u, subst (rename_fresh t x' x'') x u)
-
-let rec subst_simul t substs =
-  match t with
-  | Type -> Type
-  | Kind -> Kind
-  | Const (name, args) -> Const (name, map (fun t -> subst_simul t substs) args)
+  | Const (name, args) -> Const (name, map (fun t -> subst t substs) args)
   | Var x -> subst_var x substs
-  | App (t1, t2) -> App (subst_simul t1 substs, subst_simul t2 substs)
+  | App (t1, t2) -> App (subst t1 substs, subst t2 substs)
   | Lam (x', a, t) ->
       let x'' = fresh_var () in
-      Lam (x'', subst_simul a substs, subst_simul (rename_fresh t x' x'') substs)
+      Lam (x'', subst a substs, subst (rename_fresh t x' x'') substs)
   | Pi  (x', a, t) ->
       let x'' = fresh_var () in
-      Pi (x'', subst_simul a substs, subst_simul (rename_fresh t x' x'') substs)
+      Pi (x'', subst a substs, subst (rename_fresh t x' x'') substs)
 
 let rec subst_symb used t substs =
   match t with
@@ -188,7 +174,7 @@ let rec normalize defs term =
         match body with
         | Some body ->
             let substs = map2 (fun (x, _) u -> (x, u)) params args in
-            normalize defs (subst_simul body substs)
+            normalize defs (subst body substs)
         | None -> Const (name, args)
       else
         raise @@ DerivError (NotSameLengthParamArg (name, ctx, args))
@@ -196,7 +182,7 @@ let rec normalize defs term =
       let t1 = normalize defs t1 in
       let t2 = normalize defs t2 in
       (match t1 with
-      | Lam (x, _, b) -> normalize defs (subst b x t2)
+      | Lam (x, _, b) -> normalize defs (subst b [(x, t2)])
       | _ -> App (t1, t2))
   | Lam (x, a, b) -> Lam (x, normalize defs a, normalize defs b)
   | Pi  (x, a, b) -> Pi  (x, normalize defs a, normalize defs b)
