@@ -149,6 +149,12 @@ let rec find_var ctx name =
   | (name', typ) :: _ when name' = name -> typ
   | _ :: ctx -> find_var ctx name
 
+let rec find_var2 env name =
+  match env with
+  | [] -> name
+  | (name', var) :: _ when name' = name -> var
+  | _ :: env -> find_var2 env name
+
 let delta_reduce defs name args =
   let (ctx, body, _) = find_const defs name in
   let params = rev ctx in
@@ -218,3 +224,57 @@ let rec normalize_symb used defs term =
   | Lam (x, a, b) -> Lam (x, normalize_symb used defs a, normalize_symb (x :: used) defs b)
   | Pi  (x, a, b) -> Pi  (x, normalize_symb used defs a, normalize_symb (x :: used) defs b)
   | _ -> term
+
+let rec alpha_beta_delta_equiv defs env1 env2 t1 t2 =
+  match (t1, t2) with
+  | (Type, Type) | (Kind, Kind) -> true
+  | (Const (name, args1), Const (name', args2)) when name = name' ->
+      if for_all2 (alpha_beta_delta_equiv defs env1 env2) args1 args2 then
+        true
+      else
+        (match (reduce_head defs t1, reduce_head defs t2) with
+        | (Some t1, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | (Some t1, None) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | (None, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | (None, None) -> false
+        )
+  | (Var x1, Var x2) -> find_var2 env1 x1 = find_var2 env2 x2
+  | (App (u1, v1), App (u2, v2)) ->
+      if alpha_beta_delta_equiv defs env1 env2 u1 u2 && alpha_beta_delta_equiv defs env1 env2 v1 v2 then
+        true
+      else
+        (match (reduce_head defs t1, reduce_head defs t2) with
+        | (Some t1, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | (Some t1, None) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | (None, Some t2) -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+        | (None, None) -> false
+        )
+  | (Lam (x1, a1, t1), Lam (x2, a2, t2)) | (Pi (x1, a1, t1), Pi (x2, a2, t2)) ->
+      alpha_beta_delta_equiv defs env1 env2 a1 a2 &&
+      let x = fresh_var () in
+      alpha_beta_delta_equiv defs ((x1, x) :: env1) ((x2, x) :: env2) t1 t2
+  | (Const (_, _), Const (_, _)) | (Const (_, _), App (_, _)) | (App (_, _), Const (_, _)) ->
+      (match reduce_head defs t1 with
+      | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+      | None ->
+          (match reduce_head defs t2 with
+          | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+          | None -> false
+          )
+      )
+  | (Const (_, _), _) | (App (_, _), _) ->
+      (match reduce_head defs t1 with
+      | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+      | None -> false
+      )
+  | (_, Const (_, _)) | (_, App (_, _)) ->
+      (match reduce_head defs t2 with
+      | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
+      | None -> false
+      )
+  | (_, _) -> false
+
+  
+let alpha_beta_delta_equiv defs t1 t2 =
+  alpha_beta_delta_equiv defs [] [] t1 t2
+
