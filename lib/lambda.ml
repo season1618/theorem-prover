@@ -272,9 +272,7 @@ let rec alpha_beta_delta_equiv defs env1 env2 t1 t2 =
       | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
       | None -> false
       )
-  | (_, _) -> false
-
-  
+  | (_, _) -> false  
 let alpha_beta_delta_equiv defs t1 t2 =
   alpha_beta_delta_equiv defs [] [] t1 t2
 

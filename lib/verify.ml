@@ -1,7 +1,6 @@
 open Type
 open Error
 open Lambda
-open Value
 open Parser
 
 open List

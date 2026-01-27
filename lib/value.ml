@@ -58,12 +58,6 @@ let rec readback value : term =
   | Neut (Pi (f, a)) -> let x = fresh_var () in Pi (x, readback a, readback (f (Neut (Var x))))
   | Lam (f, a) -> let x = fresh_var () in Lam (x, readback a, readback (f (Neut (Var x))))
 
-let rec size (term : term) =
-  match term with
-  | Type | Kind | Var _ -> 1
-  | Const (_, args) -> fold_left (+) 1 (map size args)
-  | App (t1, t2) | Lam (_, t1, t2) | Pi (_, t1, t2) -> size t1 + size t2 + 1
-
 let normalize_by_eval defs term =
   readback (eval defs [] term)
 
