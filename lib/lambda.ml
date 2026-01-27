@@ -82,21 +82,21 @@ let rec subst t substs =
       let x'' = fresh_var () in
       Pi (x'', subst a substs, subst (rename_fresh t x' x'') substs)
 
-let rec subst_symb used t substs =
+let rec subst2 used t substs =
   match t with
   | Type -> Type
   | Kind -> Kind
-  | Const (name, args) -> Const (name, map (fun t -> subst_symb used t substs) args)
+  | Const (name, args) -> Const (name, map (fun t -> subst2 used t substs) args)
   | Var x -> subst_var x substs
-  | App (t1, t2) -> App (subst_symb used t1 substs, subst_symb used t2 substs)
+  | App (t1, t2) -> App (subst2 used t1 substs, subst2 used t2 substs)
   | Lam (x', a, t) ->
       let vars = free_bind_var (t :: concat_map (fun (x, u) -> [(Var x : term); u]) substs) in
       let x'' = fresh_char used vars in
-      Lam (x'', subst_symb used a substs, subst_symb (x'' :: used) (rename_fresh t x' x'') substs)
+      Lam (x'', subst2 used a substs, subst2 (x'' :: used) (rename_fresh t x' x'') substs)
   | Pi  (x', a, t) ->
       let vars = free_bind_var (t :: concat_map (fun (x, u) -> [(Var x : term); u]) substs) in
       let x'' = fresh_char used vars in
-      Pi  (x'', subst_symb used a substs, subst_symb (x'' :: used) (rename_fresh t x' x'') substs)
+      Pi  (x'', subst2 used a substs, subst2 (x'' :: used) (rename_fresh t x' x'') substs)
 
 let rec subst_by_eval env term =
   match term with
@@ -188,28 +188,28 @@ let rec normalize defs term =
   | Pi  (x, a, b) -> Pi  (x, normalize defs a, normalize defs b)
   | _ -> term
 
-let rec normalize_symb used defs term =
+let rec normalize2 used defs term =
   match term with
   | Const (name, args) ->
       let (ctx, body, _) = find_const defs name in
       let params = rev ctx in
-      let args = map (normalize_symb used defs) args in
+      let args = map (normalize2 used defs) args in
       if length params = length args then
         match body with
         | Some body ->
             let substs = map2 (fun (x, _) u -> (x, u)) params args in
-            normalize_symb used defs (subst_symb used body substs)
+            normalize2 used defs (subst2 used body substs)
         | None -> Const (name, args)
       else
         raise @@ DerivError (NotSameLengthParamArg (name, ctx, args))
   | App (t1, t2) ->
-      let t1 = normalize_symb used defs t1 in
-      let t2 = normalize_symb used defs t2 in
+      let t1 = normalize2 used defs t1 in
+      let t2 = normalize2 used defs t2 in
       (match t1 with
-      | Lam (x, _, b) -> normalize_symb used defs (subst_symb used b [(x, t2)])
+      | Lam (x, _, b) -> normalize2 used defs (subst2 used b [(x, t2)])
       | _ -> App (t1, t2))
-  | Lam (x, a, b) -> Lam (x, normalize_symb used defs a, normalize_symb (x :: used) defs b)
-  | Pi  (x, a, b) -> Pi  (x, normalize_symb used defs a, normalize_symb (x :: used) defs b)
+  | Lam (x, a, b) -> Lam (x, normalize2 used defs a, normalize2 (x :: used) defs b)
+  | Pi  (x, a, b) -> Pi  (x, normalize2 used defs a, normalize2 (x :: used) defs b)
   | _ -> term
 
 let rec alpha_beta_delta_equiv defs env1 env2 t1 t2 =

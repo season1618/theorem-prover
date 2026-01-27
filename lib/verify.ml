@@ -145,16 +145,16 @@ let rec infer_type defs ctx term =
   | Const (name, args) ->
       let (ctx, _, typ) = find_const defs name in
       let used = fst (split ctx) in
-      subst_symb used typ (map2 (fun (x, _) arg -> (x, arg)) (rev ctx) args)
+      subst2 used typ (map2 (fun (x, _) arg -> (x, arg)) (rev ctx) args)
   | Var x -> find_var ctx x
   | App (term1, term2) ->
       let used = fst (split ctx) in
-      let type1 = normalize_symb used defs (infer_type defs ctx term1) in
+      let type1 = normalize2 used defs (infer_type defs ctx term1) in
       let type2 = infer_type defs ctx term2 in
       (match (type1, type2) with
       | (Pi (x, a, b), a') ->
           if alpha_beta_delta_equiv defs a a' then
-            subst_symb used b [(x, term2)]
+            subst2 used b [(x, term2)]
           else
             raise @@ TypeError (TypeMismatchApp (term1, type1, term2, type2, a, a'));
       | (_, _) -> raise @@ TypeError (NotPi type1)
@@ -258,8 +258,8 @@ and derive_term book cache (defs, ctx, term) =
       let def_idx = Option.get @@ find_index (fun (_, name', _, _) -> name' = name) (rev defs) in
 
       let substs = combine params args in
-      let arg_types = map (fun param_type -> subst_symb used param_type substs) param_types in
-      let res_type = subst_symb used ret_type substs in
+      let arg_types = map (fun param_type -> subst2 used param_type substs) param_types in
+      let res_type = subst2 used ret_type substs in
 
       let deriv0 = derive_term_type_memo book cache (defs, ctx, Type, Kind) in
       let derivs = map2 (fun arg typ -> derive_term_type_memo book cache (defs, ctx, arg, typ)) args arg_types in
@@ -269,7 +269,7 @@ and derive_term book cache (defs, ctx, term) =
       let (deriv1, typ) = derive_term_norm book cache (defs, ctx, t1) in
       let (deriv2, _) = derive_term_norm book cache (defs, ctx, t2) in
       (match typ with
-      | Pi (x, _, b) -> (App (deriv1, deriv2), subst_symb used b [(x, t2)])
+      | Pi (x, _, b) -> (App (deriv1, deriv2), subst2 used b [(x, t2)])
       | _ -> raise @@ TypeError (NotPi typ)
       )
   | Lam (x, a, t) ->
@@ -286,7 +286,7 @@ and derive_term book cache (defs, ctx, term) =
 (* Δ ; Γ |- t : T where T is βδ-normal form *)
 and derive_term_norm book cache (defs, ctx, term) =
   let used = fst (split ctx) in
-  let typ = normalize_symb used defs (infer_type defs ctx term) in
+  let typ = normalize2 used defs (infer_type defs ctx term) in
   (derive_term_type_memo book cache (defs, ctx, term, typ), typ)
 
 and derive_term_memo book cache (defs, ctx, term) =
