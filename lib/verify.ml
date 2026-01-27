@@ -290,19 +290,6 @@ and derive_term_norm book cache (defs, ctx, term) =
   let typ = normalize_symb used defs (infer_type defs ctx term) in
   (derive_term_type_memo book cache (defs, ctx, term, typ), typ)
 
-(* Δ ; Γ |- t : T *)
-and derive_term_type book cache (defs, ctx, term, typ) =
-  if typ = Kind then
-    fst @@ derive_term book cache (defs, ctx, term)
-  else
-    let (deriv, typ') = derive_term book cache (defs, ctx, term) in
-    if alpha_equiv typ typ' then
-      deriv
-    else
-      let (deriv1, _) = derive_term_memo book cache (defs, ctx, term) in
-      let (deriv2, _) = derive_term_memo book cache (defs, ctx, typ) in
-      Conv (deriv1, deriv2)
-
 and derive_term_memo book cache (defs, ctx, term) =
   match Hashtbl.find_opt cache (defs, ctx, term) with
   | Some ((id, typ), _) -> (id, typ)
@@ -312,21 +299,27 @@ and derive_term_memo book cache (defs, ctx, term) =
       Hashtbl.add cache (defs, ctx, term) ((id, typ), Vector.make 1 ~dummy:(id, typ));
       (id, typ)
 
-and derive_term_type_memo book cache ((defs, ctx, term, typ) as judge) =
+and derive_term_type_memo book cache (defs, ctx, term, typ) =
   match Hashtbl.find_opt cache (defs, ctx, term) with
-  | Some (_, vec) ->
+  | Some ((deriv1, _), vec) ->
       (match find_opt vec (fun (_, typ') -> alpha_equiv typ typ') with
       | Some (id, _) -> id
       | None ->
-          let deriv = derive_term_type book cache judge in
-          let id = reg_deriv book deriv in
+          let (deriv2, _) = derive_term_memo book cache (defs, ctx, typ) in
+          let id = reg_deriv book (Conv (deriv1, deriv2)) in
           Vector.push vec (id, typ);
           id
       )
   | None ->
-      let deriv = derive_term_type book cache judge in
-      let id = reg_deriv book deriv in
-      Hashtbl.add cache (defs, ctx, term) ((id, typ), Vector.make 1 ~dummy:(id, typ));
+      let (deriv1, typ') = derive_term_memo book cache (defs, ctx, term) in
+      let id = if alpha_equiv typ typ' then
+        deriv1
+      else
+        let (deriv2, _) = derive_term_memo book cache (defs, ctx, typ) in
+        reg_deriv book (Conv (deriv1, deriv2))
+      in
+      let (_, vec) = Hashtbl.find cache (defs, ctx, term) in
+      Vector.push vec (id, typ);
       id
 
 and gen_derivs def_list =
