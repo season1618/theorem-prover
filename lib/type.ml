@@ -30,48 +30,6 @@ type deriv
   | DefPrim of int * int * string
   | Inst of int * int list * int
 
-type token_error
-  = InvalidToken of string
-
-type syntax_error
-  = Empty
-  | UnexpectedToken of token * token
-  | NoToken of token
-  | InvalidVariable of string
-  | NoVariable
-
-type type_error
-  = KindHasNoType
-  | VarUndef of string
-  | NotSort of term * term
-  | NotPi of term
-  | TypeMismatch of term * term
-  | TypeMismatchApp of term * term * term * term * term * term
-
-type deriv_error
-  = NotSort of term
-  | NotSameName of string * string
-  | NotAlphaEquivalence of term * term
-  | NotAlphaBetaDeltaEquiv of definitions * term * term
-  | EmptyContext
-  | NotSameLengthContext of context * context
-  | NotSameLengthDefinitions of definitions * definitions
-  | NotSameLengthParamArg of string * context * term list
-  | ConstAlreadyDefined of definition * string
-  | VarAlreadyDefined of context * string
-  | DoNotMatchDefinition of definition * definition
-  | UndefinedConst of string
-  | NotTypeKind of term * term
-  | NotPi of term
-
-exception TokenError of token_error
-
-exception SyntaxError of syntax_error
-
-exception TypeError of type_error
-
-exception DerivError of deriv_error
-
 let pp_sep ff () = fprintf ff ", "
 let pp_space ff () = fprintf ff " "
 let pp_list pp_elem = pp_print_list ~pp_sep:pp_sep pp_elem

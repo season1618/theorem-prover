@@ -1,7 +1,8 @@
+open Type
+open Error
+
 open String
 open List
-
-open Type
 
 let symbols = ['('; ')'; '['; ']'; ','; '.'; ':'; '*'; '@'; '%'; '$'; '?']
 

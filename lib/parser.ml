@@ -1,4 +1,5 @@
 open Type
+open Error
 open Lexer
 
 open String
