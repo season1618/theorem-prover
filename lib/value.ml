@@ -108,25 +108,12 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
       alpha_beta_delta_equiv defs env1 env2 a1 a2 &&
       let x = Neut (Var (fresh_var ())) in
       alpha_beta_delta_equiv defs ((x1, x) :: env1) ((x2, x) :: env2) t1 t2
-  | (_, App (Lam (x, _, u), v)) ->
-      alpha_beta_delta_equiv defs env1 env2 t1 (subst_by_eval u [(x, v)])
-  | (App (Lam (x, _, u), v), _) ->
-      alpha_beta_delta_equiv defs env1 env2 (subst_by_eval u [(x, v)]) t2
-  | (Const (_, _), Const (_, _)) | (Const (_, _), App (_, _)) | (App (_, _), Const (_, _)) when size t1 < size t2 ->
+  | (Const (_, _), Const (_, _)) | (Const (_, _), App (_, _)) | (App (_, _), Const (_, _)) ->
       (match reduce_head defs t1 with
       | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
       | None ->
           (match reduce_head defs t2 with
           | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-          | None -> false
-          )
-      )
-  | (Const (_, _), Const (_, _)) | (Const (_, _), App (_, _)) | (App (_, _), Const (_, _)) ->
-      (match reduce_head defs t2 with
-      | Some t2 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
-      | None ->
-          (match reduce_head defs t1 with
-          | Some t1 -> alpha_beta_delta_equiv defs env1 env2 t1 t2
           | None -> false
           )
       )
@@ -143,16 +130,4 @@ let rec alpha_beta_delta_equiv defs env1 env2 (t1 : term) (t2 : term) =
   | (_, _) -> false
 
 let alpha_beta_delta_equiv defs t1 t2 =
-  let time1 = Unix.gettimeofday () in
-  let res = alpha_beta_delta_equiv defs [] [] t1 t2 in
-  let time2 = Unix.gettimeofday () in
-
-  (if time2 -. time1 > 1.0 then
-    (Format.printf "1 : %d\n" (size t1);
-    Format.printf "2 : %d\n" (size t2);
-    Format.printf "1 : %a\n" pp_term t1;
-    Format.printf "2 : %a\n" pp_term t2;
-    Format.printf "%f\n" (time2 -. time1);
-    Format.print_flush ())
-  );
-  res
+  alpha_beta_delta_equiv defs [] [] t1 t2
