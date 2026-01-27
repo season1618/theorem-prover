@@ -145,11 +145,14 @@ let rec find_var2 env name =
 let delta_reduce defs name args =
   let (ctx, body, _) = find_const defs name in
   let params = rev ctx in
-  match body with
-  | Some body ->
-      let substs = map2 (fun (x, _) u -> (x, u)) params args in
-      Some (subst_by_eval body substs)
-  | None -> None
+  if length params = length args then
+    match body with
+    | Some body ->
+        let substs = map2 (fun (x, _) u -> (x, u)) params args in
+        Some (subst_by_eval body substs)
+    | None -> None
+  else
+    raise @@ DerivError (NotSameLengthParamArg (name, ctx, args))
 
 let rec reduce_head defs term =
   match term with
