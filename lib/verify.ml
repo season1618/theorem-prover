@@ -107,6 +107,38 @@ let rec read_defs file =
   | "" -> read_defs file
   | str -> raise @@ Failure str
 
+let rec traverse_defs def_list vec name =
+  let (ctx, body, typ) = find_const def_list name in
+  let def = (ctx, name, body, typ) in
+  if Option.is_some @@ find_opt vec (fun (_, name', _, _) -> name' = name) then
+    ()
+  else
+    (iter (traverse_term def_list vec) (snd (split ctx));
+    (match body with
+    | Some body -> traverse_term def_list vec body;
+    | None -> ()
+    );
+    traverse_term def_list vec typ;
+    Vector.push vec def;)
+
+and traverse_term def_list vec term =
+  match term with
+  | Type | Kind | Var _ -> ()
+  | Const (name, args) ->
+      traverse_defs def_list vec name;
+      iter (traverse_term def_list vec) args
+  | App (t1, t2) ->
+      traverse_term def_list vec t1;
+      traverse_term def_list vec t2
+  | Lam (_, a, t) | Pi (_, a, t) ->
+      traverse_term def_list vec a;
+      traverse_term def_list vec t
+
+let top_sort def_list name =
+  let vec = Vector.create ~dummy:([], "", None, Type) in
+  traverse_defs def_list vec name;
+  Vector.to_list vec
+
 let rec read_derivs file =
   let str = input_line file in
   let line, list = match Str.split (Str.regexp "[ ]+") str with
